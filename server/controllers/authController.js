@@ -122,7 +122,8 @@ exports.resendOTP = async (req, res) => {
     const user = await User.findOne({ email });
     
     if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+    // We allow resending even if isVerified is true to help users stuck in the UI, 
+    // although they could also just sign in.
 
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
