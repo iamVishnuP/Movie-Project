@@ -1,19 +1,25 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const brevo = require('@getbrevo/brevo');
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // use STARTTLS (not SSL)
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+const brevoClient = new brevo.TransactionalEmailsApi();
+brevoClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+
+const sendOTPEmail = async (toEmail, subject, otp) => {
+  const email = new brevo.SendSmtpEmail();
+  email.sender = { name: 'Movie Discovery', email: process.env.MAIL_USER };
+  email.to = [{ email: toEmail }];
+  email.subject = subject;
+  email.htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
+      <h2 style="color: #ffd700;">Welcome to Movie Discovery!</h2>
+      <p>Your OTP for account verification is:</p>
+      <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
+      <p>This OTP will expire in 10 minutes.</p>
+    </div>
+  `;
+  return brevoClient.sendTransacEmail(email);
+};
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -34,22 +40,10 @@ exports.signup = async (req, res) => {
     await newUser.save();
 
     try {
-      await transporter.sendMail({
-        from: `"Movie Discovery" <${process.env.MAIL_USER}>`,
-        to: email,
-        subject: 'Movie Discovery - OTP Verification',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
-            <h2 style="color: #ffd700;">Welcome to Movie Discovery!</h2>
-            <p>Your OTP for account verification is:</p>
-            <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
-            <p>This OTP will expire in 10 minutes.</p>
-          </div>
-        `
-      });
-      console.log('Email sent successfully via Nodemailer');
+      await sendOTPEmail(email, 'Movie Discovery - OTP Verification', otp);
+      console.log('Email sent successfully via Brevo');
     } catch (emailErr) {
-      console.error('Nodemailer encountered an error:', emailErr.message);
+      console.error('Brevo encountered an error:', emailErr.message);
     }
     
     console.log(`\n================================`);
@@ -78,21 +72,10 @@ exports.resendOTP = async (req, res) => {
     await user.save();
 
     try {
-      await transporter.sendMail({
-        from: `"Movie Discovery" <${process.env.MAIL_USER}>`,
-        to: email,
-        subject: 'Movie Discovery - Resend OTP',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
-            <p>You requested a new OTP for account verification:</p>
-            <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
-            <p>This OTP will expire in 10 minutes.</p>
-          </div>
-        `
-      });
-      console.log('Resend OTP sent successfully via Nodemailer');
+      await sendOTPEmail(email, 'Movie Discovery - Resend OTP', otp);
+      console.log('Resend OTP sent successfully via Brevo');
     } catch (emailErr) {
-      console.error('Nodemailer encountered an error during resend-otp:', emailErr.message);
+      console.error('Brevo encountered an error during resend-otp:', emailErr.message);
     }
 
     console.log(`\n================================`);
