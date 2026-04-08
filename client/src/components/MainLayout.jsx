@@ -8,6 +8,7 @@ const MainLayout = ({ children }) => {
   const location = useLocation();
 
   const onboardingRoutes = [
+    '/onboarding/profile-picture',
     '/onboarding/genres',
     '/onboarding/languages',
     '/onboarding/directors',
