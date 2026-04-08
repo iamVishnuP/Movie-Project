@@ -6,7 +6,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const MovieCard = ({ movie, type, initialHype }) => {
+const MovieCard = ({ movie, type, initialHype, hypeRank }) => {
   const [trailerUrl, setTrailerUrl] = React.useState(null);
   const [loadingTrailer, setLoadingTrailer] = React.useState(false);
   const [hypeInfo, setHypeInfo] = React.useState(initialHype || { isHyped: false, hypeCount: 0 });
@@ -134,20 +134,16 @@ const MovieCard = ({ movie, type, initialHype }) => {
               </div>
             )}
           </div>
-          {isUpcoming ? (
-            hypeInfo?.hypeCount > 0 && (
-              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
-                <span>📈</span>
-                {hypeInfo.hypeCount}
-              </div>
-            )
-          ) : (
-            movie.vote_average > 0 && (
-              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
-                <Star className="w-4 h-4" fill="#ffd700" />
-                {movie.vote_average.toFixed(1)}
-              </div>
-            )
+          {!isUpcoming && movie.vote_average > 0 && (
+            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
+              <Star className="w-4 h-4" fill="#ffd700" />
+              {movie.vote_average.toFixed(1)}
+            </div>
+          )}
+          {isUpcoming && hypeRank && (
+            <div className="absolute top-2 right-2 z-20 bg-gold-text text-black px-3 py-1 rounded-full font-black text-[10px] shadow-[0_0_20px_rgba(0,0,0,0.8)] border border-black/20 animate-pulse">
+              #{hypeRank} HYPED
+            </div>
           )}
         </div>
         
