@@ -57,10 +57,26 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, characterName, profileImage } = req.body;
+    const { name, email: rawEmail, password, characterName, profileImage } = req.body;
+    const email = rawEmail.toLowerCase().trim();
     
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'User already exists with this email' });
+    if (existingUser) {
+      if (existingUser.isVerified) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      } else {
+        // Allow unverified users to "re-signup" by updating their info and generating a new OTP
+        existingUser.name = name || existingUser.name;
+        existingUser.password = password || existingUser.password;
+        const otp = generateOTP();
+        existingUser.otp = otp;
+        existingUser.otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins now
+        await existingUser.save();
+        
+        await sendOTPEmail(email, 'Movie Discovery - New OTP Verification', otp);
+        return res.status(200).json({ message: 'User already registered but not verified. A new OTP has been sent.' });
+      }
+    }
 
     const existingChar = await User.findOne({ characterName: characterName.toLowerCase() });
     if (existingChar) return res.status(400).json({ message: 'Character name already taken' });
@@ -101,7 +117,8 @@ exports.signup = async (req, res) => {
 
 exports.resendOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email: rawEmail } = req.body;
+    const email = rawEmail?.toLowerCase().trim();
     const user = await User.findOne({ email });
     
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -143,14 +160,34 @@ exports.deleteAccount = async (req, res) => {
 
 exports.verifyOTP = async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    const user = await User.findOne({ email, otp, otpExpires: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
+    const { email: rawEmail, otp: rawOtp } = req.body;
+    const email = rawEmail?.toLowerCase().trim();
+    const otp = rawOtp?.toString().trim();
+
+    console.log(`Verifying OTP for ${email}: ${otp}`);
+
+    // Find user by email and otp. We'll check expiry manually for better error messages.
+    const user = await User.findOne({ email, otp });
+    
+    if (!user) {
+      console.log('OTP Verification Failed: User/OTP mismatch');
+      return res.status(400).json({ message: 'Invalid OTP or Email' });
+    }
+
+    if (user.otpExpires < Date.now()) {
+      console.log('OTP Verification Failed: Expired');
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
 
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
+
+    if (!process.env.JWT_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+      console.error('CRITICAL: JWT secrets are missing in environment variables');
+      return res.status(500).json({ message: 'Server configuration error: JWT secrets missing' });
+    }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
     const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
@@ -183,13 +220,18 @@ exports.verifyOTP = async (req, res) => {
 
 exports.signin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email: rawEmail, password } = req.body;
+    const email = rawEmail?.toLowerCase().trim();
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (!user.isVerified) return res.status(400).json({ message: 'Account not verified' });
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+
+    if (!process.env.JWT_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+      return res.status(500).json({ message: 'Server configuration error: JWT secrets missing' });
+    }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
     const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
