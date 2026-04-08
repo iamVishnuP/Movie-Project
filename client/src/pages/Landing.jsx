@@ -82,12 +82,7 @@ const CAROUSEL_DIALOGUES = [
     poster: "https://upload.wikimedia.org/wikipedia/en/a/a7/Apocalypse_Now_poster.jpg",
     fallback: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=500",
   },
-  {
-    text: "Bond. James Bond.",
-    movie: "Dr. No", year: "1962", char: "James Bond",
-    poster: "https://en.wikipedia.org/wiki/Tomorrow_Never_Dies",
-    fallback: "https://images.unsplash.com/photo-1542204118-e69b2d261b48?auto=format&fit=crop&q=80&w=500",
-  },
+
   {
     text: "Why did it have to be snakes?",
     movie: "Raiders of the Lost Ark", year: "1981", char: "Indiana Jones",
@@ -147,103 +142,10 @@ const CAROUSEL_DIALOGUES = [
     movie: "Midnight Cowboy", year: "1969", char: "Ratso Rizzo",
     poster: "https://upload.wikimedia.org/wikipedia/en/8/84/Midnight_Cowboy.jpg",
     fallback: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&q=80&w=500",
-  },
+  }
 
   // ── Malayalam ─────────────────────────────────────────────────────────────
-  {
-    text: "Njan thanne aanu…",
-    movie: "Drishyam", year: "2013", char: "Georgekutty",
-    poster: "https://upload.wikimedia.org/wikipedia/en/3/3c/Drishyam_2013_film_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Ente peru Stephen Nedumpally…",
-    movie: "Lucifer", year: "2019", char: "Stephen Nedumpally",
-    poster: "https://upload.wikimedia.org/wikipedia/en/1/1b/Lucifer_2019_Malayalam_film.jpg",
-    fallback: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Njan oru thallumala aanu…",
-    movie: "Thallumaala", year: "2022", char: "Wazim",
-    poster: "https://upload.wikimedia.org/wikipedia/en/4/4f/Thallumaala_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Kochi pazhaya Kochi alla…",
-    movie: "Spadikam", year: "1995", char: "Aadu Thoma",
-    poster: "https://upload.wikimedia.org/wikipedia/en/9/97/Spadikam.jpg",
-    fallback: "https://images.unsplash.com/photo-1542204118-e69b2d261b48?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Police alla… rowdy aanu…",
-    movie: "Kireedam", year: "1989", char: "Sethumadhavan",
-    poster: "https://upload.wikimedia.org/wikipedia/en/6/6e/Kireedam_film.jpg",
-    fallback: "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?auto=format&fit=crop&q=80&w=500",
-  },
 
-  // ── Tamil ─────────────────────────────────────────────────────────────────
-  {
-    text: "Naan oru thadava sonna…",
-    movie: "Baasha", year: "1995", char: "Manickam",
-    poster: "https://upload.wikimedia.org/wikipedia/en/1/1c/Baashha.jpg",
-    fallback: "https://images.unsplash.com/photo-1512719263465-429988ce3d19?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "En vazhi, thani vazhi…",
-    movie: "Padayappa", year: "1999", char: "Padayappa",
-    poster: "https://upload.wikimedia.org/wikipedia/en/2/2d/Padayappa.jpg",
-    fallback: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Kabali da!",
-    movie: "Kabali", year: "2016", char: "Kabali",
-    poster: "https://upload.wikimedia.org/wikipedia/en/4/4f/Kabali_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Idhu eppadi irukku?",
-    movie: "Sivaji", year: "2007", char: "Sivaji",
-    poster: "https://upload.wikimedia.org/wikipedia/en/7/7e/Sivaji_film_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Valimai update!",
-    movie: "Valimai", year: "2022", char: "Arjun",
-    poster: "https://upload.wikimedia.org/wikipedia/en/6/6c/Valimai_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=500",
-  },
-
-  // ── Hindi ─────────────────────────────────────────────────────────────────
-  {
-    text: "Don ko pakadna mushkil hi nahi…",
-    movie: "Don", year: "1978", char: "Don",
-    poster: "https://upload.wikimedia.org/wikipedia/en/0/0e/Don_1978_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1542204118-e69b2d261b48?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Mogambo khush hua!",
-    movie: "Mr. India", year: "1987", char: "Mogambo",
-    poster: "https://upload.wikimedia.org/wikipedia/en/1/1b/Mr._India_film.jpg",
-    fallback: "https://images.unsplash.com/photo-1514306191717-452ec28c7814?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Kitne aadmi the?",
-    movie: "Sholay", year: "1975", char: "Gabbar Singh",
-    poster: "https://upload.wikimedia.org/wikipedia/en/5/52/Sholay.jpg",
-    fallback: "https://images.unsplash.com/photo-1472457897821-70d3819a0e24?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "All is well.",
-    movie: "3 Idiots", year: "2009", char: "Rancho",
-    poster: "https://upload.wikimedia.org/wikipedia/en/d/df/3_idiots_poster.jpg",
-    fallback: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&q=80&w=500",
-  },
-  {
-    text: "Pushpa… jhukega nahi!",
-    movie: "Pushpa: The Rise", year: "2021", char: "Pushpa Raj",
-    poster: "https://upload.wikimedia.org/wikipedia/en/5/5b/Pushpa_-_The_Rise.jpg",
-    fallback: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=500",
-  },
 ];
 // ── CyclingPosterCard ─────────────────────────────────────────────────────────
 
