@@ -9,6 +9,7 @@ router.post('/resend-otp', authController.resendOTP);
 router.post('/signin', authController.signin);
 router.post('/refresh-token', authController.refreshToken);
 router.post('/logout', authController.logout);
+router.get('/me', authMiddleware, authController.getMe);
 router.post('/update-profile', authMiddleware, authController.updateProfile);
 router.delete('/delete-account', authMiddleware, authController.deleteAccount);
 

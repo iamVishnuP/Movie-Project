@@ -11,21 +11,21 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
-        const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
-
-        if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
+        if (token) {
+          // Verify with backend
+          const res = await api.get('/auth/me');
+          setUser(res.data);
           axios.defaults.headers.common['Authorization'] = token;
         }
       } catch (error) {
-        console.error('Failed to initialize auth from localStorage:', error);
-        // Clear corrupted data
+        console.error('Failed to initialize auth:', error);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         delete axios.defaults.headers.common['Authorization'];
+        setUser(null);
       } finally {
         setLoading(false);
       }

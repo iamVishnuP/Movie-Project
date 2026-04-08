@@ -25,6 +25,23 @@ import ViewAll from './pages/ViewAll';
 import Landing from './pages/Landing';
 
 
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-gold-text border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+  if (!user) return <Navigate to="/" />;
+  return children;
+};
+
+const PublicRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/discover" />;
+  return children;
+};
 
 function App() {
   return (
@@ -32,27 +49,28 @@ function App() {
       <Router>
         <div className="min-h-screen bg-black text-white">
           <Routes>
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/verify-otp" element={<OTPVerification />} />
-            <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+            <Route path="/verify-otp" element={<PublicRoute><OTPVerification /></PublicRoute>} />
+            <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
             
             <Route path="/" element={<Landing />} />
-            <Route path="/discover" element={<MainLayout><Home /></MainLayout>} />
-            <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
-            <Route path="/onboarding/profile-picture" element={<MainLayout><ProfilePicture /></MainLayout>} />
-            <Route path="/onboarding/genres" element={<MainLayout><GenreSelection /></MainLayout>} />
-            <Route path="/onboarding/languages" element={<MainLayout><LanguageSelection /></MainLayout>} />
-            <Route path="/onboarding/directors" element={<MainLayout><DirectorSelection /></MainLayout>} />
-            <Route path="/onboarding/movies" element={<MainLayout><MovieSelection /></MainLayout>} />
-            <Route path="/onboarding/completion" element={<MainLayout><Completion /></MainLayout>} />
-            <Route path="/movie/:id" element={<MainLayout><MovieDetail /></MainLayout>} />
-            <Route path="/watchlist" element={<MainLayout><Watchlist /></MainLayout>} />
-            <Route path="/search" element={<MainLayout><Search /></MainLayout>} />
-            <Route path="/find-people" element={<MainLayout><FindPeople /></MainLayout>} />
-            <Route path="/user/:id" element={<MainLayout><PublicProfile /></MainLayout>} />
-            <Route path="/create-discussion" element={<MainLayout><CreateDiscussion /></MainLayout>} />
-            <Route path="/discussion/:id" element={<MainLayout><DiscussionThread /></MainLayout>} />
-            <Route path="/view-all" element={<MainLayout><ViewAll /></MainLayout>} />
+            
+            <Route path="/discover" element={<ProtectedRoute><MainLayout><Home /></MainLayout></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><MainLayout><Profile /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/profile-picture" element={<ProtectedRoute><MainLayout><ProfilePicture /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/genres" element={<ProtectedRoute><MainLayout><GenreSelection /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/languages" element={<ProtectedRoute><MainLayout><LanguageSelection /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/directors" element={<ProtectedRoute><MainLayout><DirectorSelection /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/movies" element={<ProtectedRoute><MainLayout><MovieSelection /></MainLayout></ProtectedRoute>} />
+            <Route path="/onboarding/completion" element={<ProtectedRoute><MainLayout><Completion /></MainLayout></ProtectedRoute>} />
+            <Route path="/movie/:id" element={<ProtectedRoute><MainLayout><MovieDetail /></MainLayout></ProtectedRoute>} />
+            <Route path="/watchlist" element={<ProtectedRoute><MainLayout><Watchlist /></MainLayout></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><MainLayout><Search /></MainLayout></ProtectedRoute>} />
+            <Route path="/find-people" element={<ProtectedRoute><MainLayout><FindPeople /></MainLayout></ProtectedRoute>} />
+            <Route path="/user/:id" element={<ProtectedRoute><MainLayout><PublicProfile /></MainLayout></ProtectedRoute>} />
+            <Route path="/create-discussion" element={<ProtectedRoute><MainLayout><CreateDiscussion /></MainLayout></ProtectedRoute>} />
+            <Route path="/discussion/:id" element={<ProtectedRoute><MainLayout><DiscussionThread /></MainLayout></ProtectedRoute>} />
+            <Route path="/view-all" element={<ProtectedRoute><MainLayout><ViewAll /></MainLayout></ProtectedRoute>} />
           </Routes>
           <Toaster position="top-center" toastOptions={{
             style: {

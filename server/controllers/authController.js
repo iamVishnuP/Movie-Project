@@ -281,6 +281,30 @@ exports.refreshToken = async (req, res) => {
   }
 };
 
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).json({ message: 'User not found' });
+    
+    const userProfile = {
+      id: user._id,
+      name: user.name,
+      characterName: user.characterName,
+      email: user.email,
+      isVerified: user.isVerified,
+      selectedGenres: user.selectedGenres,
+      selectedLanguages: user.selectedLanguages,
+      profileImage: user.profileImage,
+      favoriteDirectors: user.favoriteDirectors,
+      favoriteMovies: user.favoriteMovies,
+      watchlist: user.watchlist
+    };
+    res.json(userProfile);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.logout = (req, res) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
