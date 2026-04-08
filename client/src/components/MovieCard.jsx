@@ -119,26 +119,27 @@ const MovieCard = ({ movie, type }) => {
           )}
         </div>
         
-        <div className="p-4 bg-gradient-to-t from-black to-transparent">
-          <h3 className="font-bold text-lg line-clamp-1 group-hover:text-gold-text transition-colors">
+        <div className="p-3 sm:p-4 bg-gradient-to-t from-black to-transparent">
+          <h3 className="font-bold text-base sm:text-lg line-clamp-1 group-hover:text-gold-text transition-colors">
             {movie.title}
           </h3>
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-gray-400 text-sm">
+          <div className="flex flex-wrap justify-between items-center mt-1 sm:mt-2 gap-2">
+            <p className="text-gray-400 text-xs sm:text-sm">
               {movie.release_date?.split('-')[0]}
             </p>
-            <div className="flex gap-2 items-center">
+            <div className="flex gap-1.5 sm:gap-2 items-center">
               {isUpcoming && (
                 <a 
                   href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title)}+trailer`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-text text-black rounded-lg font-black text-[10px] uppercase tracking-wider hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,215,0,0.3)]"
+                  className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-gold-text text-black rounded-lg font-black text-[8px] sm:text-[10px] uppercase tracking-wider hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,215,0,0.3)]"
                   title="Watch Trailer on YouTube"
                 >
-                  <Play className="w-3 h-3" fill="black" />
-                  WATCH TRAILER
+                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="black" />
+                  <span className="hidden xs:inline">WATCH TRAILER</span>
+                  <span className="xs:hidden">TRAILER</span>
                 </a>
               )}
               {isInLibrary ? (
@@ -146,18 +147,18 @@ const MovieCard = ({ movie, type }) => {
                   {!isWatched && !isUpcoming && (
                     <button 
                       onClick={markAsWatched}
-                      className="p-2 hover:bg-white/10 rounded-full border border-white/20 transition-all text-white"
+                      className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full border border-white/20 transition-all text-white"
                       title="Mark as Watched"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   )}
                   <button 
                     onClick={removeFromLibrary}
-                    className="p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full border border-white/20 transition-all text-gray-400"
+                    className="p-1.5 sm:p-2 hover:bg-red-500/20 hover:text-red-400 rounded-full border border-white/20 transition-all text-gray-400"
                     title="Remove from Library"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 </>
               ) : (
@@ -165,18 +166,18 @@ const MovieCard = ({ movie, type }) => {
                   {!isUpcoming && (
                     <button 
                       onClick={markAsWatched}
-                      className="p-2 hover:bg-white/10 rounded-full border border-white/20 transition-all text-white"
+                      className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full border border-white/20 transition-all text-white"
                       title="Mark as Watched"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   )}
                   <button 
                     onClick={addToWatchlist}
-                    className="p-2 hover:bg-gold-text hover:text-black rounded-full border border-gold-text/30 transition-all text-gold-text"
+                    className="p-1.5 sm:p-2 hover:bg-gold-text hover:text-black rounded-full border border-gold-text/30 transition-all text-gold-text"
                     title="Add to Watchlist"
                   >
-                    <Bookmark className="w-4 h-4" />
+                    <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 </>
               )}
