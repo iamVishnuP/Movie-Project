@@ -9,8 +9,10 @@ import {
   Loader2, 
   X, 
   Check, 
+  Check, 
   Clapperboard,
-  Image as ImageIcon 
+  Image as ImageIcon,
+  Camera 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -47,6 +49,19 @@ const CreateDiscussion = () => {
       console.error('Failed to fetch connections');
     } finally {
       setConnLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image must be under 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setCustomImage(reader.result);
+      reader.readAsDataURL(file);
     }
   };
 
@@ -190,16 +205,38 @@ const CreateDiscussion = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Cover Image (Optional URL)</label>
-                <div className="relative">
-                   <ImageIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                   <input 
-                    type="text" 
-                    placeholder="Paste an image URL or use the movie poster"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-14 focus:border-gold-text outline-none font-bold tracking-tight"
-                    value={customImage}
-                    onChange={(e) => setCustomImage(e.target.value)}
-                  />
+                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Cover Image</label>
+                <div className="flex flex-col gap-4">
+                  {customImage ? (
+                    <div className="relative rounded-xl overflow-hidden aspect-video border border-gold-text/30 group">
+                      <img src={customImage} className="w-full h-full object-cover" alt="preview" />
+                      <button 
+                        onClick={() => setCustomImage('')}
+                        className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-full hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-3 w-full aspect-video bg-white/5 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-gold-text/30 hover:bg-gold-text/5 transition-all">
+                      <Camera className="w-8 h-8 text-gray-500" />
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-gray-300">Upload Cover Image</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">PNG, JPG up to 2MB</p>
+                      </div>
+                      <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    </label>
+                  )}
+                  <div className="relative">
+                     <ImageIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                     <input 
+                      type="text" 
+                      placeholder="Or paste an image URL..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-14 focus:border-gold-text outline-none font-bold tracking-tight text-sm"
+                      value={customImage.startsWith('data:') ? '' : customImage}
+                      onChange={(e) => setCustomImage(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

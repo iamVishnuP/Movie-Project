@@ -4,7 +4,7 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
-const NotificationBell = ({ forceShow = false }) => {
+const NotificationBell = ({ forceShow = false, onSelect }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -23,7 +23,7 @@ const NotificationBell = ({ forceShow = false }) => {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
+    const interval = setInterval(fetchNotifications, 5000); // Poll every 5s
     return () => clearInterval(interval);
   }, []);
 
@@ -61,7 +61,7 @@ const NotificationBell = ({ forceShow = false }) => {
   };
 
   return (
-    <div className={`relative ${forceShow ? 'block' : (unreadCount === 0 ? 'hidden sm:block' : 'block')}`} ref={dropdownRef}>
+    <div className={`relative ${forceShow ? 'block' : 'block'}`} ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-full hover:bg-white/10 transition-colors relative"
@@ -75,7 +75,7 @@ const NotificationBell = ({ forceShow = false }) => {
       </button>
 
       {isOpen && (
-        <div className="fixed sm:absolute top-20 sm:top-full left-4 right-4 sm:left-auto sm:right-0 sm:w-80 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100]">
+        <div className="fixed sm:absolute top-[80px] sm:top-full left-4 right-4 sm:left-auto sm:right-0 sm:w-80 bg-black border border-white/10 rounded-xl overflow-hidden shadow-2xl z-[100]">
           <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black">
             <h3 className="font-black uppercase tracking-tighter text-sm gold-text">Notifications</h3>
             {unreadCount > 0 && (
@@ -109,7 +109,11 @@ const NotificationBell = ({ forceShow = false }) => {
                       {n.type === 'connection_request' ? <UserPlus className="w-5 h-5 text-blue-400" /> : <MessageSquare className="w-5 h-5 text-gold-text" />}
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-white">
+                      <p className="text-xs text-white" onClick={() => {
+                        if (onSelect) onSelect();
+                        if (n.type === 'discussion_invite') navigate(`/discussion/${n.referenceId}`);
+                        setIsOpen(false);
+                      }}>
                         <span className="font-bold gold-text">@{n.sender?.characterName}</span> {n.message}
                       </p>
                       <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">

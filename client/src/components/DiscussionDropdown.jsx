@@ -3,7 +3,7 @@ import { MessageSquare, Users, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 
-const DiscussionDropdown = ({ forceShow = false }) => {
+const DiscussionDropdown = ({ forceShow = false, onSelect }) => {
   const [discussions, setDiscussions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -20,6 +20,8 @@ const DiscussionDropdown = ({ forceShow = false }) => {
 
   useEffect(() => {
     fetchDiscussions();
+    const interval = setInterval(fetchDiscussions, 5000); // Poll every 5s
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -85,6 +87,7 @@ const DiscussionDropdown = ({ forceShow = false }) => {
                     className="p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group relative"
                     onClick={() => {
                       setIsOpen(false);
+                      if (onSelect) onSelect();
                       navigate(`/discussion/${disc._id}`);
                     }}
                   >

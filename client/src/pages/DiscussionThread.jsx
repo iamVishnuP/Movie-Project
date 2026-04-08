@@ -27,7 +27,9 @@ const DiscussionThread = () => {
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [sending, setSending] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const fetchData = async () => {
     try {
@@ -45,22 +47,37 @@ const DiscussionThread = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Polling every 10s
+    const interval = setInterval(fetchData, 3000); // Polling every 3s
     return () => clearInterval(interval);
   }, [id]);
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('Image must be under 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setSelectedImage(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handlePost = async (e) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() && !selectedImage) return;
 
     setSending(true);
     try {
       await api.post('/discussions/post', {
         discussionId: id,
         text: message,
+        imageUrl: selectedImage,
         parentPostId: replyTo?._id
       });
       setMessage('');
+      setSelectedImage(null);
       setReplyTo(null);
       fetchData();
     } catch (error) {
@@ -173,6 +190,7 @@ const DiscussionThread = () => {
               <img src={discussion.movie.posterPath ? `https://image.tmdb.org/t/p/w185${discussion.movie.posterPath}` : 'https://placehold.co/185x278/1a1a1a/ffd700?text=No+Img'} className="w-20 h-28 md:w-24 md:h-36 object-cover rounded-xl shadow-2xl border-2 border-white/10" alt="poster" />
               <div className="flex-1 pb-2">
                 <h1 className="text-2xl md:text-4xl font-black tracking-tighter gold-text leading-none mb-2">{discussion.movie.title}</h1>
+                <p className="text-xs md:text-sm font-bold text-white mb-2 line-clamp-2 md:line-clamp-none max-w-2xl">{discussion.caption}</p>
                 <div className="flex gap-4">
                   <div className="flex -space-x-3">
                     {discussion.participants.slice(0, 5).map(p => (
@@ -185,10 +203,15 @@ const DiscussionThread = () => {
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-2">{discussion.participants.length} Participants</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-2">{discussion.participants.length} Participants</p>
                 </div>
               </div>
             </div>
+          </div>
+          {/* Detailed Thoughts Section */}
+          <div className="px-6 py-4 md:px-8 md:py-6 border-t border-white/5 bg-white/[0.02]">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-2">Detailed Analysis</p>
+            <p className="text-sm text-gray-300 leading-relaxed italic">"{discussion.thoughts}"</p>
           </div>
         </div>
 
@@ -220,21 +243,49 @@ const DiscussionThread = () => {
                 <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-white/5 rounded-full"><X className="w-3 h-3" /></button>
               </div>
             )}
-            <form onSubmit={handlePost} className={`bg-black/80 backdrop-blur-3xl border ${replyTo ? 'border-gold-text/30 rounded-b-2xl' : 'border-white/10 rounded-2xl'} p-2 flex items-center gap-2 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]`}>
-              <input
-                type="text"
-                placeholder="POST YOUR ANALYSIS..."
-                className="flex-1 bg-transparent border-none outline-none py-2 md:py-3 px-3 md:px-4 text-xs md:text-sm font-bold tracking-tight text-white placeholder:text-gray-700"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <button
-                type="submit"
-                disabled={!message.trim() || sending}
-                className="w-12 h-12 bg-gold-text text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:scale-100"
-              >
-                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button>
+            <form onSubmit={handlePost} className={`bg-black/80 backdrop-blur-3xl border ${replyTo ? 'border-gold-text/30 rounded-b-2xl' : 'border-white/10 rounded-2xl'} p-2 flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]`}>
+              {selectedImage && (
+                <div className="p-2 relative w-20 h-20 group">
+                   <img src={selectedImage} className="w-full h-full object-cover rounded-lg border border-gold-text/30 shadow-lg" alt="upload" />
+                   <button 
+                    type="button" 
+                    onClick={() => setSelectedImage(null)} 
+                    className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                   >
+                    <X className="w-3 h-3" />
+                   </button>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  className="hidden"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current.click()}
+                  className={`p-2 rounded-xl transition-all ${selectedImage ? 'text-gold-text bg-gold-text/10' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                >
+                  <ImageIcon className="w-5 h-5" />
+                </button>
+                <input
+                  type="text"
+                  placeholder="POST YOUR ANALYSIS..."
+                  className="flex-1 bg-transparent border-none outline-none py-2 md:py-3 px-1 md:px-2 text-xs md:text-sm font-bold tracking-tight text-white placeholder:text-gray-700"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  disabled={(!message.trim() && !selectedImage) || sending}
+                  className="w-12 h-12 bg-gold-text text-black rounded-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all disabled:opacity-30 disabled:scale-100 flex-shrink-0"
+                >
+                  {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
+              </div>
             </form>
           </div>
         )}

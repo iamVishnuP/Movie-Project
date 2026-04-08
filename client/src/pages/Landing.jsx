@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Film, Sparkles, ChevronRight, ArrowUpRight, Play, Users, Star, Clapperboard } from 'lucide-react';
 
@@ -441,7 +442,14 @@ const Navbar = ({ navigate }) => {
 
 const Landing = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const heroRef = useRef(null);
+
+  useEffect(() => {
+    if (user) {
+      navigate('/discover');
+    }
+  }, [user, navigate]);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   const posterOpacity = useTransform(scrollYProgress, [0, 0.6], [0.65, 0]);
   const posterY = useTransform(scrollYProgress, [0, 1], ['0%', '15%']);

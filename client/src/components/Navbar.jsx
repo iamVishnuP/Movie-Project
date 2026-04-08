@@ -131,8 +131,8 @@ const Navbar = () => {
 
       <div className="flex items-center gap-1 sm:gap-4 md:gap-6">
         <div className="flex items-center gap-2">
-          <DiscussionDropdown />
-          <NotificationBell />
+          <DiscussionDropdown onSelect={() => setIsMobileMenuOpen(false)} />
+          <NotificationBell onSelect={() => setIsMobileMenuOpen(false)} />
         </div>
         <div className="flex items-center gap-4 pl-4 border-l border-white/5">
           <div ref={searchRef} className="relative">
@@ -288,8 +288,8 @@ const Navbar = () => {
               <div className="p-4 flex justify-between items-center">
                 <p className="text-gray-500 text-xs font-black uppercase tracking-widest">Discussions & Alerts</p>
                 <div className="flex gap-4">
-                  <DiscussionDropdown forceShow={true} />
-                  <NotificationBell forceShow={true} />
+                  <DiscussionDropdown forceShow={true} onSelect={() => setIsMobileMenuOpen(false)} />
+                  <NotificationBell forceShow={true} onSelect={() => setIsMobileMenuOpen(false)} />
                 </div>
               </div>
             </div>
