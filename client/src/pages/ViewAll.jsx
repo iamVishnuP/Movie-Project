@@ -113,7 +113,7 @@ const ViewAll = () => {
             {movies.map(movie => (
               <div key={movie.id} className="relative">
                 {type === 'upcoming' && movie.hypeRank && (
-                  <div className="absolute -top-2 -left-2 z-20 bg-gold-text text-black px-3 py-1 rounded-full font-black text-[10px] shadow-[0_0_15px_rgba(255,215,0,0.6)]">
+                  <div className="absolute top-2 left-2 z-20 bg-gold-text text-black px-4 py-1.5 rounded-full font-black text-[10px] shadow-[0_0_20px_rgba(0,0,0,0.8)] border border-black/20">
                     #{movie.hypeRank} HYPED
                   </div>
                 )}
