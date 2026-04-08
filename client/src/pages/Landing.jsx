@@ -447,7 +447,8 @@ const Landing = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/discover');
+      const needsOnboarding = !user.selectedGenres || user.selectedGenres.length === 0;
+      navigate(needsOnboarding ? '/onboarding/profile-picture' : '/discover');
     }
   }, [user, navigate]);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
