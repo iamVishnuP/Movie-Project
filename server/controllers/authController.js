@@ -1,24 +1,33 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const brevo = require('@getbrevo/brevo');
-
-const brevoClient = new brevo.TransactionalEmailsApi();
-brevoClient.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
 
 const sendOTPEmail = async (toEmail, subject, otp) => {
-  const email = new brevo.SendSmtpEmail();
-  email.sender = { name: 'Movie Discovery', email: process.env.MAIL_USER };
-  email.to = [{ email: toEmail }];
-  email.subject = subject;
-  email.htmlContent = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
-      <h2 style="color: #ffd700;">Welcome to Movie Discovery!</h2>
-      <p>Your OTP for account verification is:</p>
-      <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
-      <p>This OTP will expire in 10 minutes.</p>
-    </div>
-  `;
-  return brevoClient.sendTransacEmail(email);
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { name: 'Movie Discovery', email: process.env.MAIL_USER },
+      to: [{ email: toEmail }],
+      subject: subject,
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
+          <h2 style="color: #ffd700;">Welcome to Movie Discovery!</h2>
+          <p>Your OTP for account verification is:</p>
+          <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
+          <p>This OTP will expire in 10 minutes.</p>
+        </div>
+      `
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Brevo API error: ${errText}`);
+  }
+  return response.json();
 };
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
