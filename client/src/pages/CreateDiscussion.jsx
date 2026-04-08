@@ -9,7 +9,6 @@ import {
   Loader2, 
   X, 
   Check, 
-  Check, 
   Clapperboard,
   Image as ImageIcon,
   Camera 

@@ -11,7 +11,7 @@ import {
   Smile,
   Clock,
   User,
-  ImageIcon,
+  Image as ImageIcon,
   X,
   LogOut
 } from 'lucide-react';
