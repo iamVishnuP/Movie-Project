@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  characterName: { type: String, required: true, unique: true },
+  characterName: { type: String, required: true, unique: true, lowercase: true, trim: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isVerified: { type: Boolean, default: false },
@@ -31,6 +31,9 @@ const userSchema = new mongoose.Schema({
     review: { type: String }
   }]
 }, { timestamps: true });
+
+// Explicit case-insensitive unique index on characterName
+userSchema.index({ characterName: 1 }, { unique: true, collation: { locale: 'en', strength: 2 } });
 
 userSchema.pre('save', async function () {
   if (this.isModified('characterName')) {

@@ -61,6 +61,12 @@ exports.signup = async (req, res) => {
 
     res.status(201).json({ message: 'OTP sent to email. Please verify.' });
   } catch (error) {
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      if (field === 'characterName') return res.status(400).json({ message: 'Character name already taken' });
+      if (field === 'email') return res.status(400).json({ message: 'User already exists with this email' });
+    }
     res.status(500).json({ message: error.message });
   }
 };
