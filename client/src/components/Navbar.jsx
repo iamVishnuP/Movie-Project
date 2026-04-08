@@ -184,7 +184,7 @@ const Navbar = () => {
           <div className="relative" ref={profileRef}>
             <button 
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-10 h-10 rounded-xl bg-gold-text border-2 border-gold-text/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] group overflow-hidden"
+              className="w-10 h-10 rounded-full bg-gold-text border-2 border-gold-text/20 flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,215,0,0.2)] group overflow-hidden"
               title="Profile"
             >
               {user?.profileImage ? (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import {
   Loader2,
@@ -13,7 +14,8 @@ import {
   User,
   Image as ImageIcon,
   X,
-  LogOut
+  LogOut,
+  Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -22,12 +24,18 @@ const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '💧
 const DiscussionThread = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+
+  const [mentionQuery, setMentionQuery] = useState(null);
+  const [mentionList, setMentionList] = useState([]);
+  const [cursorPos, setCursorPos] = useState(0);
+
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -37,6 +45,8 @@ const DiscussionThread = () => {
       setData(response.data);
       // Mark as read locally for dynamic badge
       localStorage.setItem(`disc_${id}`, new Date().toISOString());
+      // Inform server
+      api.post(`/discussions/${id}/seen`).catch(() => {});
     } catch (error) {
       toast.error('Failed to load discussion');
       navigate('/');
@@ -94,6 +104,50 @@ const DiscussionThread = () => {
     } catch (error) {
       console.error('Failed to react');
     }
+  };
+
+  const handleMessageChange = (e) => {
+    const val = e.target.value;
+    setMessage(val);
+    const pos = e.target.selectionStart;
+    setCursorPos(pos);
+    
+    if (!discussion) return;
+
+    const textBeforeCursor = val.slice(0, pos);
+    const words = textBeforeCursor.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord.startsWith('@')) {
+      const q = lastWord.slice(1).toLowerCase();
+      setMentionQuery(q);
+      
+      const filtered = discussion.participants.filter(p => 
+        p._id !== user.id && 
+        p.characterName.toLowerCase().startsWith(q)
+      ).slice(0, 5);
+      
+      setMentionList(filtered);
+    } else {
+      setMentionQuery(null);
+      setMentionList([]);
+    }
+  };
+
+  const insertMention = (characterName) => {
+    const textBefore = message.slice(0, cursorPos);
+    const textAfter = message.slice(cursorPos);
+    
+    const wordsBefore = textBefore.split(/\s+/);
+    wordsBefore.pop();
+    
+    const newTextBefore = wordsBefore.length > 0 ? wordsBefore.join(' ') + ` @${characterName} ` : `@${characterName} `;
+    
+    setMessage(newTextBefore + textAfter);
+    setMentionQuery(null);
+    setMentionList([]);
+    
+    // Attempt to focus input (usually ref needed, but we'll accept simple logic)
   };
 
   const handleLeave = async () => {
@@ -230,6 +284,36 @@ const DiscussionThread = () => {
             <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-700">You're caught up</p>
             <div className="h-px bg-white/10 flex-1"></div>
           </div>
+          {(() => {
+            if (!discussion.seenBy || discussion.seenBy.length === 0 || !user) return null;
+            
+            // Determine the "last updated" time for the room.
+            let lastActivityTime = new Date(discussion.updatedAt).getTime();
+            if (posts && posts.length > 0) {
+               lastActivityTime = Math.max(lastActivityTime, new Date(posts[posts.length - 1].createdAt).getTime());
+            }
+            
+            // Add a 5 second buffer since polling is every 3 seconds
+            const threshold = lastActivityTime - 5000;
+
+            const others = discussion.seenBy.filter(s => {
+               if(!s.userId || s.userId._id.toString() === user.id) return false;
+               return new Date(s.seenAt).getTime() >= threshold;
+            });
+
+            if (others.length === 0) return null;
+            const names = others.map(s => s.userId.characterName);
+            let text = '';
+            if (names.length === 1) text = names[0];
+            else if (names.length === 2) text = `${names[0]}, ${names[1]}`;
+            else if (names.length > 2) text = `${names[0]}, ${names[1]} and ${names.length - 2} other`;
+            
+            return (
+              <div className="flex justify-end pt-2 pb-6 animate-in fade-in duration-500">
+                <p className="text-[10px] text-gray-500 italic flex items-center gap-1">Seen by {text}</p>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Input Dock */}
@@ -243,7 +327,26 @@ const DiscussionThread = () => {
                 <button onClick={() => setReplyTo(null)} className="p-1 hover:bg-white/5 rounded-full"><X className="w-3 h-3" /></button>
               </div>
             )}
-            <form onSubmit={handlePost} className={`bg-black/80 backdrop-blur-3xl border ${replyTo ? 'border-gold-text/30 rounded-b-2xl' : 'border-white/10 rounded-2xl'} p-2 flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)]`}>
+            
+            {mentionQuery !== null && mentionList.length > 0 && (
+              <div className="absolute bottom-[calc(100%+10px)] left-6 mb-2 w-64 bg-[#1a1a1a] border border-gold-text/30 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+                {mentionList.map(p => (
+                  <button
+                    key={p._id}
+                    type="button"
+                    onClick={() => insertMention(p.characterName)}
+                    className="flex items-center gap-3 w-full p-3 hover:bg-white/5 transition-all text-left border-b border-white/5 last:border-0"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-gold-text flex items-center justify-center text-[10px] text-black font-black uppercase overflow-hidden">
+                      {p.profileImage ? <img src={p.profileImage} alt="" className="w-full h-full object-cover"/> : p.name?.[0]}
+                    </div>
+                    <span className="font-bold text-sm gold-text">@{p.characterName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <form onSubmit={handlePost} className={`bg-black/80 backdrop-blur-3xl border ${replyTo ? 'border-gold-text/30 rounded-b-2xl' : 'border-white/10 rounded-2xl'} p-2 flex flex-col shadow-[0_-20px_50px_rgba(0,0,0,0.5)] relative`}>
               {selectedImage && (
                 <div className="p-2 relative w-20 h-20 group">
                    <img src={selectedImage} className="w-full h-full object-cover rounded-lg border border-gold-text/30 shadow-lg" alt="upload" />
@@ -276,7 +379,10 @@ const DiscussionThread = () => {
                   placeholder="POST YOUR ANALYSIS..."
                   className="flex-1 bg-transparent border-none outline-none py-2 md:py-3 px-1 md:px-2 text-xs md:text-sm font-bold tracking-tight text-white placeholder:text-gray-700"
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={handleMessageChange}
+                  onClick={handleMessageChange}
+                  onKeyUp={handleMessageChange}
+                  autoComplete="off"
                 />
                 <button
                   type="submit"

@@ -22,11 +22,11 @@ const ViewAll = () => {
         let pageTitle = searchParams.get('title') || 'Movies';
 
         if (type === 'upcoming') {
-          response = await api.get('/movies/upcoming');
+          response = await api.get('/movies/upcoming?fetchAll=true');
         } else if (type === 'now_playing') {
-          response = await api.get('/movies/now-playing');
+          response = await api.get('/movies/now-playing?fetchAll=true');
         } else if (type === 'recommendation') {
-          const recRes = await api.get('/movies/recommendations');
+          const recRes = await api.get('/movies/recommendations?fetchAll=true');
           // If we have a specific title, find that section
           const sectionTitle = searchParams.get('title');
           if (sectionTitle) {
@@ -41,7 +41,35 @@ const ViewAll = () => {
           response = { data: [] };
         }
 
-        setMovies(response.data);
+        let processedMovies = response.data;
+
+        if (type === 'upcoming') {
+          const hRes = await api.get('/hypes/all');
+          const hypes = hRes.data;
+          
+          processedMovies = processedMovies.map(movie => {
+            const hype = hypes.find(item => item.movieId === movie.id.toString());
+            return {
+              ...movie,
+              hypeCount: hype?.hypeCount || 0,
+              hypeInfo: {
+                hypeCount: hype?.hypeCount || 0,
+                isHyped: user ? hype?.hypedBy?.includes(user.id) : false
+              }
+            };
+          });
+
+          // Sort by hype count
+          processedMovies.sort((a, b) => b.hypeCount - a.hypeCount);
+
+          // Add rank to top 3
+          processedMovies = processedMovies.map((movie, index) => ({
+            ...movie,
+            hypeRank: movie.hypeCount > 0 && index < 3 ? index + 1 : null
+          }));
+        }
+
+        setMovies(processedMovies);
         setTitle(pageTitle);
       } catch (error) {
         console.error('Failed to fetch movies', error);
@@ -83,7 +111,14 @@ const ViewAll = () => {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 md:gap-8">
             {movies.map(movie => (
-              <MovieCard key={movie.id} movie={movie} type={type} />
+              <div key={movie.id} className="relative">
+                {type === 'upcoming' && movie.hypeRank && (
+                  <div className="absolute -top-2 -left-2 z-20 bg-gold-text text-black px-3 py-1 rounded-full font-black text-[10px] shadow-[0_0_15px_rgba(255,215,0,0.6)]">
+                    #{movie.hypeRank} HYPED
+                  </div>
+                )}
+                <MovieCard movie={movie} type={type} initialHype={movie.hypeInfo} />
+              </div>
             ))}
           </div>
         )}

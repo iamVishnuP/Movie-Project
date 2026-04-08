@@ -1,13 +1,13 @@
-# 📽️ Cinema Kottakam: The Social Universe for Cinephiles
+# 📽️ Cinema Kottaka: The Social Universe for Cinephiles
 
-**Cinema Kottakam** (സിനിമ കൊട്ടക) is a premium, state-of-the-art cinematic discovery and discussion platform. It is designed to bridge the gap between "just watching a movie" and "experiencing cinema as a community."
+**Cinema Kottaka** (സിനിമ കൊട്ടക) is a premium, state-of-the-art cinematic discovery and discussion platform. It is designed to bridge the gap between "just watching a movie" and "experiencing cinema as a community."
 
 ---
 
 ## ✨ The Masterpiece: Unique Selling Points
 
 ### 1. The Persona-Based Onboarding
-Unlike generic apps, Cinema Kottakam treats its users as characters in a grand story. Upon joining, users choose a **Unique Character Name**, effectively building a cinematic identity that separates their private life from their cinephile persona.
+Unlike generic apps, Cinema Kottaka treats its users as characters in a grand story. Upon joining, users choose a **Unique Character Name**, effectively building a cinematic identity that separates their private life from their cinephile persona.
 
 ### 2. The Smart Discovery Engine
 Our algorithm doesn't just suggest movies; it learns a user's "Cinematic Soul." By analyzing favorite directors, languages, and past ratings, it curates rows of potential favorites, upcoming masterpieces, and currently trending hits in a beautifully responsive interface.
@@ -38,8 +38,8 @@ Built on the **MERN Stack** (MongoDB, Express, React, Node.js) with:
 ---
 
 ## 🎯 The Mission
-**Cinema Kottakam** is dedicated to the few who don't just "watch" movies—they analyze them, live them, and want a premium place to discuss them.
+**Cinema Kottaka** is dedicated to the few who don't just "watch" movies—they analyze them, live them, and want a premium place to discuss them.
 
 ---
 
-*"The show doesn't end when the credits roll. Enter the Kottakam, build your circle, and join the deepest cinematic discussions on the web."*
+*"The show doesn't end when the credits roll. Enter the Kottaka, build your circle, and join the deepest cinematic discussions on the web."*

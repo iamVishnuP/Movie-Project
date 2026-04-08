@@ -5,7 +5,7 @@ const notificationSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: { 
     type: String, 
-    enum: ['connection_request', 'connection_accepted', 'discussion_invite'], 
+    enum: ['connection_request', 'connection_accepted', 'discussion_invite', 'mention'], 
     required: true 
   },
   referenceId: { type: mongoose.Schema.Types.ObjectId, required: true },

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { uploadImage } = require('../utils/cloudinary');
 
 const sendOTPEmail = async (toEmail, subject, otp) => {
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -67,7 +68,12 @@ exports.signup = async (req, res) => {
     const otp = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const newUser = new User({ name, email, password, characterName, otp, otpExpires, profileImage });
+    let finalProfileImage = profileImage;
+    if (profileImage && profileImage.startsWith('data:image')) {
+      finalProfileImage = await uploadImage(profileImage, 'profiles');
+    }
+
+    const newUser = new User({ name, email, password, characterName, otp, otpExpires, profileImage: finalProfileImage });
     await newUser.save();
 
     try {
@@ -146,7 +152,16 @@ exports.verifyOTP = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
+
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
     const userProfile = {
       id: user._id,
       name: user.name,
@@ -176,7 +191,16 @@ exports.signin = async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
+
+    res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
     const userProfile = {
       id: user._id,
       name: user.name,
@@ -212,7 +236,13 @@ exports.updateProfile = async (req, res) => {
     if (selectedLanguages) user.selectedLanguages = selectedLanguages;
     if (favoriteDirectors) user.favoriteDirectors = favoriteDirectors;
     if (favoriteMovies) user.favoriteMovies = favoriteMovies;
-    if (profileImage) user.profileImage = profileImage;
+    if (profileImage) {
+      if (profileImage.startsWith('data:image')) {
+        user.profileImage = await uploadImage(profileImage, 'profiles');
+      } else {
+        user.profileImage = profileImage;
+      }
+    }
 
     await user.save();
     res.json({ 
@@ -230,6 +260,32 @@ exports.updateProfile = async (req, res) => {
       }
     });
   } catch (error) {
+    require('fs').appendFileSync('error.log', 'UPDATE_PROFILE_ERROR: ' + (error.stack || error.message) + '\n');
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const rfToken = req.cookies.refreshToken;
+    if (!rfToken) return res.status(401).json({ message: 'No refresh token' });
+
+    const decoded = jwt.verify(rfToken, process.env.REFRESH_TOKEN_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(401).json({ message: 'Invalid refresh token' });
+
+    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    res.json({ token: newAccessToken });
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid refresh token' });
+  }
+};
+
+exports.logout = (req, res) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'none'
+  });
+  res.json({ message: 'Logged out successfully' });
 };

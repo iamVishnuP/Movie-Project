@@ -6,33 +6,54 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
-const MovieCard = ({ movie, type }) => {
+const MovieCard = ({ movie, type, initialHype }) => {
   const [trailerUrl, setTrailerUrl] = React.useState(null);
-  const isUpcoming = type === 'upcoming';
+  const [loadingTrailer, setLoadingTrailer] = React.useState(false);
+  const [hypeInfo, setHypeInfo] = React.useState(initialHype || { isHyped: false, hypeCount: 0 });
   const { user, setUser } = useAuth();
+  
+  const today = new Date().toISOString().split('T')[0];
+  const isUpcoming = movie.release_date > today;
+  
   const isInLibrary = user?.watchlist?.find(m => m.movieId === movie.id.toString());
   const isWatched = isInLibrary?.status === 'watched';
 
   React.useEffect(() => {
     const fetchTrailer = async () => {
-      if (isUpcoming) {
-        try {
-          const { data } = await api.get(`/movies/videos/${movie.id}`);
-          // Broaden search to Trailer, Teaser, or Featurette
-          const trailer = data.find(v => v.type === 'Trailer' && v.site === 'YouTube') || 
-                          data.find(v => v.type === 'Teaser' && v.site === 'YouTube') ||
-                          data.find(v => v.site === 'YouTube');
-          
-          if (trailer) {
-            setTrailerUrl(`https://www.youtube.com/watch?v=${trailer.key}`);
-          }
-        } catch (error) {
-          console.error('Failed to fetch trailer', error);
+      setLoadingTrailer(true);
+      try {
+        const { data } = await api.get(`/movies/videos/${movie.id}`);
+        // Broaden search to Trailer, Teaser, or Featurette
+        const trailer = data.find(v => v.type === 'Trailer' && v.site === 'YouTube') || 
+                        data.find(v => v.type === 'Teaser' && v.site === 'YouTube') ||
+                        data.find(v => v.site === 'YouTube');
+        
+        if (trailer) {
+          setTrailerUrl(`https://www.youtube.com/watch?v=${trailer.key}`);
+        } else {
+          // YouTube search fallback if no direct video found
+          setTrailerUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title + ' trailer')}`);
         }
+      } catch (error) {
+        console.error('Failed to fetch trailer', error);
+      } finally {
+        setLoadingTrailer(false);
       }
     };
     fetchTrailer();
-  }, [movie.id, isUpcoming]);
+
+    const fetchHype = async () => {
+      if (isUpcoming && !initialHype) {
+        try {
+          const { data } = await api.get(`/hypes/stats?movieIds=${movie.id}`);
+          if (data[movie.id]) {
+            setHypeInfo(data[movie.id]);
+          }
+        } catch (error) {}
+      }
+    };
+    fetchHype();
+  }, [movie.id, movie.title, isUpcoming, initialHype]);
 
   const addToWatchlist = async (e) => {
     e.preventDefault();
@@ -94,7 +115,7 @@ const MovieCard = ({ movie, type }) => {
             loading="lazy"
           />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            {isUpcoming && trailerUrl ? (
+            {trailerUrl ? (
               <a 
                 href={trailerUrl}
                 target="_blank"
@@ -103,19 +124,30 @@ const MovieCard = ({ movie, type }) => {
                 className="p-5 bg-gold-text text-black rounded-full shadow-2xl hover:scale-110 transition-transform flex items-center gap-2 group/trailer"
               >
                 <Play fill="black" className="w-6 h-6" />
-                <span className="max-w-0 overflow-hidden group-hover/trailer:max-w-xs transition-all duration-500 whitespace-nowrap font-black uppercase text-xs tracking-widest">Watch Trailer</span>
+                <span className="max-w-0 overflow-hidden group-hover/trailer:max-w-xs transition-all duration-500 whitespace-nowrap font-black uppercase text-xs tracking-widest">
+                  {isUpcoming ? 'Watch Trailer' : 'View Trailer'}
+                </span>
               </a>
             ) : (
-              <div className="p-4 bg-gold-text text-black rounded-full shadow-lg">
-                <Play fill="black" />
+              <div className="p-4 bg-gold-text/50 text-black rounded-full shadow-lg">
+                <Play className="w-6 h-6" fill="black" />
               </div>
             )}
           </div>
-          {movie.vote_average && (
-            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
-              <Star className="w-4 h-4" fill="#ffd700" />
-              {movie.vote_average.toFixed(1)}
-            </div>
+          {isUpcoming ? (
+            hypeInfo?.hypeCount > 0 && (
+              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
+                <span>📈</span>
+                {hypeInfo.hypeCount}
+              </div>
+            )
+          ) : (
+            movie.vote_average > 0 && (
+              <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-gold-text/30 rounded-md flex items-center gap-1 text-sm font-bold text-gold-text">
+                <Star className="w-4 h-4" fill="#ffd700" />
+                {movie.vote_average.toFixed(1)}
+              </div>
+            )
           )}
         </div>
         
@@ -123,25 +155,30 @@ const MovieCard = ({ movie, type }) => {
           <h3 className="font-bold text-base sm:text-lg line-clamp-1 group-hover:text-gold-text transition-colors">
             {movie.title}
           </h3>
-          <div className="flex flex-wrap justify-between items-center mt-1 sm:mt-2 gap-2">
-            <p className="text-gray-400 text-xs sm:text-sm">
-              {movie.release_date?.split('-')[0]}
-            </p>
-            <div className="flex gap-1.5 sm:gap-2 items-center">
-              {isUpcoming && (
-                <a 
-                  href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title)}+trailer`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-gold-text text-black rounded-lg font-black text-[8px] sm:text-[10px] uppercase tracking-wider hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,215,0,0.3)]"
-                  title="Watch Trailer on YouTube"
-                >
-                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="black" />
-                  <span className="hidden xs:inline">WATCH TRAILER</span>
-                  <span className="xs:hidden">TRAILER</span>
-                </a>
-              )}
+          <div className="flex flex-col mt-1 sm:mt-2 gap-2">
+            <div className="flex justify-between items-center w-full">
+              <p className="text-gray-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">
+                {isUpcoming ? (
+                  <span className="text-gold-text/70 italic">Releasing on {movie.release_date}</span>
+                ) : (
+                  <span>Released on {movie.release_date}</span>
+                )}
+              </p>
+            </div>
+            <div className="flex justify-between items-center gap-1.5 sm:gap-2">
+              <a 
+                href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent(movie.title)}+trailer`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 px-2 py-1 sm:px-3 sm:py-1.5 bg-gold-text text-black rounded-lg font-black text-[8px] sm:text-[10px] uppercase tracking-wider hover:scale-105 transition-all shadow-[0_0_15px_rgba(255,215,0,0.3)]"
+                title="Watch Trailer on YouTube"
+              >
+                <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="black" />
+                <span className="xs:inline">
+                  {trailerUrl?.includes('results?search_query') ? 'SEARCH TRAILER' : 'WATCH TRAILER'}
+                </span>
+              </a>
               {isInLibrary ? (
                 <>
                   {!isWatched && !isUpcoming && (

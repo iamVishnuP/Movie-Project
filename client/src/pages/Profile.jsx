@@ -99,7 +99,8 @@ const Profile = () => {
       setUser(response.data.user);
       toast.success('Profile updated!');
     } catch (error) {
-      toast.error('Update failed');
+      // Expose the raw error string to the user toast directly
+      toast.error(error?.response?.data?.message || error?.message || 'Update failed');
     } finally {
       setLoading(false);
       setEditingField(null);

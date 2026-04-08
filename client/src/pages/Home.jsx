@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import MovieCard from '../components/MovieCard';
 import { Loader2, TrendingUp, Calendar, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -59,8 +60,13 @@ const MovieRow = ({ title, movies, icon: Icon, type, genreId }) => {
           className="flex gap-4 md:gap-6 overflow-x-auto horizontal-scroll pb-8 scroll-smooth no-scrollbar px-2 md:px-0"
         >
           {movies.map(movie => (
-            <div key={movie.id} className="flex-shrink-0 w-[140px] sm:w-[180px] md:w-[220px] lg:w-[250px] flex flex-col">
-              <MovieCard movie={movie} type={type} />
+            <div key={movie.id} className="flex-shrink-0 w-[140px] sm:w-[180px] md:w-[220px] lg:w-[250px] flex flex-col relative">
+              {type === 'upcoming' && movie.hypeRank && (
+                <div className="absolute -top-2 -left-2 z-20 bg-gold-text text-black px-3 py-1 rounded-full font-black text-[10px] shadow-[0_0_15px_rgba(255,215,0,0.6)] animate-bounce">
+                  #{movie.hypeRank} HYPED
+                </div>
+              )}
+              <MovieCard movie={movie} type={type} initialHype={movie.hypeInfo} />
             </div>
           ))}
         </div>
@@ -78,6 +84,7 @@ const MovieRow = ({ title, movies, icon: Icon, type, genreId }) => {
 };
 
 const Home = () => {
+  const { user } = useAuth();
   const [upcoming, setUpcoming] = useState([]);
   const [nowPlaying, setNowPlaying] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
@@ -86,14 +93,50 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [u, n, r] = await Promise.all([
+        // Fetch hype data first as it is local and reliable
+        let hData = [];
+        try {
+          const h = await api.get('/hypes/all');
+          hData = h.data;
+        } catch (e) {
+          console.error('Hype fetch failed', e);
+        }
+
+        const fetchResults = await Promise.allSettled([
           api.get('/movies/upcoming'),
           api.get('/movies/now-playing'),
           api.get('/movies/recommendations')
         ]);
-        setUpcoming(u.data);
-        setNowPlaying(n.data);
-        setRecommendations(r.data);
+
+        if (fetchResults[0].status === 'fulfilled') {
+          const uData = fetchResults[0].value.data;
+          let processedUpcoming = uData.map(movie => {
+            const hype = hData.find(item => item.movieId === movie.id.toString());
+            return {
+              ...movie,
+              hypeCount: hype?.hypeCount || 0,
+              hypeInfo: {
+                hypeCount: hype?.hypeCount || 0,
+                isHyped: user ? hype?.hypedBy?.includes(user.id) : false
+              }
+            };
+          });
+          processedUpcoming.sort((a, b) => b.hypeCount - a.hypeCount);
+          processedUpcoming = processedUpcoming.map((movie, index) => ({
+            ...movie,
+            hypeRank: movie.hypeCount > 0 && index < 3 ? index + 1 : null
+          }));
+          setUpcoming(processedUpcoming);
+        }
+
+        if (fetchResults[1].status === 'fulfilled') {
+          setNowPlaying(fetchResults[1].value.data);
+        }
+
+        if (fetchResults[2].status === 'fulfilled') {
+          setRecommendations(fetchResults[2].value.data);
+        }
+
       } catch (error) {
         console.error('Failed to fetch movies', error);
       } finally {
@@ -101,7 +144,7 @@ const Home = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   if (loading) return <HomeSkeleton />;
 

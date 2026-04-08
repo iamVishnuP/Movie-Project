@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { 
   Film, 
@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 
 const CreateDiscussion = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
@@ -32,6 +33,21 @@ const CreateDiscussion = () => {
   const [connections, setConnections] = useState([]);
   const [invitedIds, setInvitedIds] = useState([]);
   const [connLoading, setConnLoading] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.prefill) {
+      const p = location.state.prefill;
+      setSelectedMovie({
+        id: p.movieId,
+        title: p.movieTitle,
+        poster_path: p.moviePoster,
+        backdrop_path: p.movieImage
+      });
+      setStep(2);
+      // Consume the state so it doesn't loop if user navigates back to step 1
+      window.history.replaceState({}, document.title)
+    }
+  }, [location]);
 
   useEffect(() => {
     if (step === 3) {

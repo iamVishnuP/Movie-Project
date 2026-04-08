@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 
 const AuthContext = createContext();
 
@@ -40,7 +41,12 @@ export const AuthProvider = ({ children }) => {
     axios.defaults.headers.common['Authorization'] = token;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.error('Logout error', e);
+    }
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');

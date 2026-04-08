@@ -10,6 +10,7 @@ router.get('/:id', authMiddleware, discussionController.getDiscussion);
 router.post('/post', authMiddleware, discussionController.createPost);
 router.post('/react', authMiddleware, discussionController.reactToPost);
 router.post('/leave/:id', authMiddleware, discussionController.leaveDiscussion);
+router.post('/:id/seen', authMiddleware, discussionController.seenDiscussion);
 router.delete('/:id', authMiddleware, discussionController.deleteDiscussion);
 
 module.exports = router;

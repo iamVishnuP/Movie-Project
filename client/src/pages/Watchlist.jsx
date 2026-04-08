@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Bookmark, Star, Play, Trash2, CheckCircle, Loader2, Bookmark as BookmarkIcon } from 'lucide-react';
+import { Bookmark, Star, Play, Trash2, CheckCircle, Loader2, Bookmark as BookmarkIcon, Plus, FolderOpen, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +15,11 @@ const Watchlist = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(initialStatus);
 
+  const [collections, setCollections] = useState([]);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [expandedCollection, setExpandedCollection] = useState(null);
+
   const fetchWatchlist = async () => {
     try {
       const response = await api.get('/movies/watchlist');
@@ -26,8 +31,18 @@ const Watchlist = () => {
     }
   };
 
+  const fetchCollections = async () => {
+    try {
+      const response = await api.get('/collections');
+      setCollections(response.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchWatchlist();
+    fetchCollections();
   }, []);
 
   const removeFromWatchlist = async (movieId) => {
@@ -93,6 +108,39 @@ const Watchlist = () => {
     }
   };
 
+  const handleCreateCollection = async (e) => {
+    e.preventDefault();
+    if (!newCollectionName.trim()) return;
+    try {
+      const resp = await api.post('/collections', { name: newCollectionName });
+      setCollections([resp.data, ...collections]);
+      setShowCollectionModal(false);
+      setNewCollectionName('');
+      toast.success('Collection created');
+    } catch {
+      toast.error('Failed to create collection');
+    }
+  };
+
+  const handleDeleteCollection = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/collections/${id}`);
+      setCollections(collections.filter(c => c._id !== id));
+      if (expandedCollection?._id === id) setExpandedCollection(null);
+      toast.success('Collection deleted');
+    } catch {}
+  };
+
+  const removeFromCollection = async (colId, movieId) => {
+    try {
+      const resp = await api.delete(`/collections/${colId}/remove/${movieId}`);
+      setCollections(collections.map(c => c._id === colId ? resp.data : c));
+      if (expandedCollection?._id === colId) setExpandedCollection(resp.data);
+      toast.success('Removed from collection');
+    } catch {}
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-black">
       <Loader2 className="w-12 h-12 text-gold-text animate-spin" />
@@ -123,10 +171,79 @@ const Watchlist = () => {
             >
               Watched
             </button>
+            <button
+              onClick={() => setActiveTab('collections')}
+              className={`flex-1 md:flex-none px-6 md:px-8 py-2 md:py-3 rounded-full text-sm md:text-base font-bold transition-all ${activeTab === 'collections' ? 'bg-gold-text text-black' : 'text-gray-400 hover:text-white'}`}
+            >
+              Collections
+            </button>
           </div>
         </div>
 
-        {filteredMovies.length === 0 ? (
+        {activeTab === 'collections' && (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            <div className="flex justify-end">
+               <button onClick={() => setShowCollectionModal(true)} className="gold-button px-6 py-3 rounded-xl flex items-center gap-2 font-bold"><Plus className="w-5 h-5"/> Create Collection</button>
+            </div>
+            
+            {collections.length === 0 ? (
+              <div className="text-center py-20 glass-card">
+                <FolderOpen className="w-16 h-16 text-gray-700 mx-auto mb-6" />
+                <p className="text-xl text-gray-500 font-bold uppercase tracking-tight">No collections yet</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {collections.map(col => (
+                  <div key={col._id} className="glass-card p-6 border-white/5 transition-all w-full cursor-pointer hover:border-gold-text/50" onClick={() => setExpandedCollection(expandedCollection?._id === col._id ? null : col)}>
+                     <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                           <FolderOpen className="w-8 h-8 text-gold-text" />
+                           <div>
+                             <h3 className="text-xl font-bold">{col.name}</h3>
+                             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{col.movies.length} Movies</p>
+                           </div>
+                        </div>
+                        <button onClick={(e) => handleDeleteCollection(col._id, e)} className="p-2 hover:bg-black/30 rounded-full text-red-500/50 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
+                     </div>
+                     
+                     <AnimatePresence>
+                       {expandedCollection?._id === col._id && (
+                         <motion.div initial={{height:0, opacity:0}} animate={{height:'auto', opacity:1}} exit={{height:0, opacity:0}} className="pt-6 mt-6 border-t border-white/5 grid grid-cols-3 sm:grid-cols-4 gap-4 overflow-hidden">
+                            {col.movies.map(m => (
+                              <div key={m.id} className="relative aspect-[2/3] group rounded-lg overflow-hidden border border-white/10" onClick={(e) => { e.stopPropagation(); navigate(`/movie/${m.id}`); }}>
+                                 <img src={`https://image.tmdb.org/t/p/w200${m.posterPath}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt=""/>
+                                 <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                   <button onClick={(e) => { e.stopPropagation(); removeFromCollection(col._id, m.id); }} className="p-1.5 bg-black/80 backdrop-blur-sm border border-white/10 rounded-full text-red-500 hover:text-white hover:bg-red-500"><X className="w-3 h-3"/></button>
+                                 </div>
+                              </div>
+                            ))}
+                            {col.movies.length === 0 && <p className="col-span-full text-center py-8 text-xs text-gray-500 uppercase font-black tracking-widest">Empty Collection</p>}
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {showCollectionModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowCollectionModal(false)}>
+                 <div className="bg-[#1a1a1a] p-8 rounded-2xl border border-gold-text/30 w-full max-w-md animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                    <h2 className="text-2xl font-black mb-6 gold-text uppercase tracking-tighter">New Collection</h2>
+                    <form onSubmit={handleCreateCollection}>
+                      <input type="text" placeholder="Collection Name (e.g., Sci-Fi Favorites)" value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:border-gold-text outline-none mb-6 font-bold" autoFocus/>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={() => setShowCollectionModal(false)} className="flex-1 py-3 rounded-xl border border-white/20 font-black uppercase tracking-widest hover:bg-white/5 text-sm">Cancel</button>
+                        <button type="submit" disabled={!newCollectionName.trim()} className="flex-1 py-3 rounded-xl bg-gold-text text-black font-black uppercase tracking-widest text-sm disabled:opacity-30">Create</button>
+                      </div>
+                    </form>
+                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab !== 'collections' && (filteredMovies.length === 0 ? (
           <div className="text-center py-20 glass-card">
             <Bookmark className="w-16 md:w-20 h-16 md:h-20 text-gray-700 mx-auto mb-6" />
             <p className="text-xl md:text-2xl text-gray-500 font-medium font-bold uppercase tracking-tight">Your {activeTab} list is empty</p>
@@ -234,7 +351,7 @@ const Watchlist = () => {
               ))}
             </AnimatePresence>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

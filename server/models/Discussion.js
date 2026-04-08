@@ -12,6 +12,10 @@ const discussionSchema = new mongoose.Schema({
   image: { type: String }, // Custom uploaded image URL
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   invited: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  seenBy: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    seenAt: { type: Date, default: Date.now }
+  }],
   status: { type: String, enum: ['draft', 'active'], default: 'draft' }
 }, { timestamps: true });
 

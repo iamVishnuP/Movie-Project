@@ -6,18 +6,28 @@ const Review = require('../models/Review');
 
 const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 
-// Harden TMDB Fetcher: Force IPv4 and add custom Agent
+const dns = require('dns');
+
+// Harden TMDB Fetcher: Custom Agent with forced IPv4 lookup
 const tmdbClient = axios.create({
   baseURL: 'https://api.themoviedb.org/3',
-  timeout: 10000,
+  timeout: 20000,
   httpsAgent: new https.Agent({
-    family: 4, // Force IPv4 to prevent ECONNRESET
-    keepAlive: true
+    family: 4, 
+    keepAlive: false,
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+        callback(err, address, family);
+      });
+    }
   }),
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
   }
 });
+
+console.log('[TMDB] Fetcher initialized with forced IPv4 DNS lookup');
 
 const API_KEY = process.env.TMDB_API_KEY;
 
@@ -34,7 +44,7 @@ const fallbackDirectors = [
   { id: 138, name: 'Quentin Tarantino', profile_path: '/19770519/tarantino.jpg', known_for_department: 'Directing' }
 ];
 
-const fetchFromTMDB = async (endpoint, params = {}, retries = 3) => {
+const fetchFromTMDB = async (endpoint, params = {}, retries = 5) => {
   const cacheKey = `${endpoint}-${JSON.stringify(params)}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
@@ -46,15 +56,16 @@ const fetchFromTMDB = async (endpoint, params = {}, retries = 3) => {
       cache.set(cacheKey, response.data);
       return response.data;
     } catch (error) {
-      const isNetworkError = error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND';
+      const isNetworkError = error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ENOTFOUND' || error.message.includes('timeout');
       
       if (isNetworkError && i < retries - 1) {
-        console.log(`Retrying TMDB request (${i + 1}/${retries}) for ${endpoint} due to ${error.code}...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+        const backoffTime = (1000 * (i + 1)) + Math.random() * 1000;
+        console.log(`[TMDB] ${error.code || 'TIMEOUT'} on ${endpoint}. Retry ${i + 1}/${retries} in ${Math.round(backoffTime)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
         continue;
       }
 
-      console.error(`TMDB API Error on ${endpoint}:`, error.message);
+      console.error(`TMDB API Final Error on ${endpoint}:`, error.message);
       
       // Graceful fallback dummy data so UI doesn't break
       console.log('Sending fallback dummy data to frontend...');
@@ -85,6 +96,38 @@ const fetchFromTMDB = async (endpoint, params = {}, retries = 3) => {
   }
 };
 
+const fetchMoviesWithLanguages = async (endpoint, baseParams, languages, pagesToFetch = 1) => {
+  let allResults = [];
+  const langs = languages && languages.length > 0 ? languages : [''];
+
+  for (let page = 1; page <= pagesToFetch; page++) {
+    const pagePromises = langs.map(lang => {
+      const params = { ...baseParams, page };
+      if (lang) {
+        params.with_original_language = lang;
+      }
+      return fetchFromTMDB(endpoint, params);
+    });
+
+    const pageResults = await Promise.all(pagePromises);
+    
+    // Interleave the results so movies from different languages are mixed evenly
+    const maxLen = Math.max(...pageResults.map(res => res.results?.length || 0));
+    for (let i = 0; i < maxLen; i++) {
+        for (const res of pageResults) {
+            if (res.results && res.results[i]) {
+                const isDuplicate = allResults.some(m => m.id === res.results[i].id);
+                if (!isDuplicate) {
+                    allResults.push(res.results[i]);
+                }
+            }
+        }
+    }
+  }
+
+  return allResults;
+};
+
 exports.getUpcoming = async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
@@ -94,15 +137,18 @@ exports.getUpcoming = async (req, res) => {
       'include_adult': false
     };
 
+    const pagesToFetch = req.query.fetchAll === 'true' ? 5 : 1;
+    let languages = [];
+
     if (req.user) {
       const user = await User.findById(req.user.id);
       if (user && user.selectedLanguages?.length > 0) {
-        params.with_original_language = user.selectedLanguages.join('|');
+        languages = user.selectedLanguages;
       }
     }
 
-    const data = await fetchFromTMDB('/discover/movie', params);
-    res.json(data.results);
+    const movies = await fetchMoviesWithLanguages('/discover/movie', params, languages, pagesToFetch);
+    res.json(movies);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -124,15 +170,18 @@ exports.getNowPlaying = async (req, res) => {
       'include_adult': false
     };
 
+    const pagesToFetch = req.query.fetchAll === 'true' ? 5 : 1;
+    let languages = [];
+
     if (req.user) {
       const user = await User.findById(req.user.id);
       if (user && user.selectedLanguages?.length > 0) {
-        params.with_original_language = user.selectedLanguages.join('|');
+        languages = user.selectedLanguages;
       }
     }
 
-    const data = await fetchFromTMDB('/discover/movie', params);
-    res.json(data.results);
+    const movies = await fetchMoviesWithLanguages('/discover/movie', params, languages, pagesToFetch);
+    res.json(movies);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -194,45 +243,51 @@ exports.getRecommendations = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    const pagesToFetch = req.query.fetchAll === 'true' ? 5 : 1;
     const { selectedGenres, selectedLanguages, favoriteDirectors, favoriteMovies } = user;
     const recommendationSections = [];
 
+    const fetchPages = async (endpoint, params) => {
+        let movies = [];
+        for(let p=1; p<=pagesToFetch; p++){
+            const pRes = await fetchFromTMDB(endpoint, {...params, page: p});
+            movies = movies.concat(pRes.results || []);
+        }
+        return movies;
+    };
+
     // 1. Based on Genres
     if (selectedGenres && selectedGenres.length > 0) {
-      const data = await fetchFromTMDB('/discover/movie', {
-        with_genres: selectedGenres.join(','),
+      const movies = await fetchPages('/discover/movie', {
+        with_genres: selectedGenres.join('|'),
         sort_by: 'popularity.desc'
       });
       recommendationSections.push({
         title: 'Based on your genres',
-        movies: data.results || []
+        movies: movies
       });
     }
 
     // 2. Based on Languages
     if (selectedLanguages && selectedLanguages.length > 0) {
-      const data = await fetchFromTMDB('/discover/movie', {
-        with_original_language: selectedLanguages.join('|'),
-        sort_by: 'popularity.desc'
-      });
+      const movies = await fetchMoviesWithLanguages('/discover/movie', { sort_by: 'popularity.desc' }, selectedLanguages, pagesToFetch);
       recommendationSections.push({
         title: 'In your preferred languages',
-        movies: data.results || []
+        movies: movies
       });
     }
 
     // 3. Based on Directors
     if (favoriteDirectors && favoriteDirectors.length > 0) {
-      // Get the first few directors to show specific rows
       for (const director of favoriteDirectors.slice(0, 2)) {
-        const data = await fetchFromTMDB('/discover/movie', {
+        const movies = await fetchPages('/discover/movie', {
           with_crew: director.id,
           sort_by: 'popularity.desc'
         });
-        if (data.results?.length > 0) {
+        if (movies?.length > 0) {
           recommendationSections.push({
             title: `Directed by ${director.name}`,
-            movies: data.results
+            movies: movies
           });
         }
       }
@@ -241,19 +296,23 @@ exports.getRecommendations = async (req, res) => {
     // 4. Similar to Favorites
     if (favoriteMovies && favoriteMovies.length > 0) {
       const fav = favoriteMovies[Math.floor(Math.random() * favoriteMovies.length)];
-      const data = await fetchFromTMDB(`/movie/${fav.id}/similar`);
+      let movies = [];
+      for (let p = 1; p <= Math.min(pagesToFetch, 3); p++) {
+        const res = await fetchFromTMDB(`/movie/${fav.id}/similar`, { page: p });
+        movies = movies.concat(res.results || []);
+      }
       recommendationSections.push({
         title: `Because you liked ${fav.title}`,
-        movies: data.results || []
+        movies: movies
       });
     }
 
     // Fallback if nothing
     if (recommendationSections.length === 0) {
-      const data = await fetchFromTMDB('/movie/popular');
+      const movies = await fetchPages('/movie/popular', {});
       recommendationSections.push({
         title: 'Popular on MovieHub',
-        movies: data.results || []
+        movies: movies
       });
     }
 

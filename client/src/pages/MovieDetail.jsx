@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Play, Star, Clock, Globe, Calendar, User, Loader2, Bookmark, CheckCircle, MessageSquare, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react';
+import { Play, Star, Clock, Globe, Calendar, User, Loader2, Bookmark, CheckCircle, MessageSquare, ThumbsUp, ThumbsDown, Trash2, FolderOpen, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const MovieDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [reviewText, setReviewText] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [collections, setCollections] = useState([]);
+  const [showCollectionsDropdown, setShowCollectionsDropdown] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [hypeInfo, setHypeInfo] = useState({ isHyped: false, hypeCount: 0 });
+
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const fetchMovie = async () => {
@@ -35,9 +43,29 @@ const MovieDetail = () => {
       }
     };
 
+    const fetchCollections = async () => {
+      if (user) {
+        try {
+          const response = await api.get('/collections');
+          setCollections(response.data);
+        } catch (error) {}
+      }
+    };
+
+    const fetchHype = async () => {
+      try {
+        const response = await api.get(`/hypes/stats?movieIds=${id}`);
+        if (response.data[id]) {
+          setHypeInfo(response.data[id]);
+        }
+      } catch (error) {}
+    };
+
     fetchMovie();
     fetchReviews();
-  }, [id]);
+    fetchCollections();
+    fetchHype();
+  }, [id, user]);
 
   useEffect(() => {
     const userMovie = user?.watchlist?.find(m => m.movieId === id.toString());
@@ -57,6 +85,66 @@ const MovieDetail = () => {
       toast.success('Added to watchlist');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to add to watchlist');
+    }
+  };
+
+  const toggleHype = async () => {
+    if (!user) return toast.error('Sign in to hype movies!');
+    try {
+      const response = await api.post('/hypes/toggle', { 
+        movieId: movie.id, 
+        title: movie.title 
+      });
+      setHypeInfo(response.data);
+      if (response.data.isHyped) {
+        toast.success('Hype recorded! 📈');
+      }
+    } catch (error) {
+      toast.error('Failed to update hype');
+    }
+  };
+
+  const addToCollection = async (collectionId) => {
+    try {
+      await api.post(`/collections/${collectionId}/add`, {
+        movie: {
+          id: movie.id.toString(),
+          title: movie.title,
+          posterPath: movie.poster_path
+        }
+      });
+      toast.success('Added to collection');
+      setShowCollectionsDropdown(false);
+    } catch (error) {
+      toast.error('Failed to add to collection');
+    }
+  };
+
+  const handleCreateAndAdd = async (e) => {
+    e.preventDefault();
+    if (!newCollectionName.trim()) return;
+    setIsCreatingCollection(true);
+    try {
+      const response = await api.post('/collections', { name: newCollectionName });
+      const newCol = response.data;
+      setCollections([newCol, ...collections]);
+      
+      // Add movie to the new collection
+      await api.post(`/collections/${newCol._id}/add`, {
+        movie: {
+          id: movie.id.toString(),
+          title: movie.title,
+          posterPath: movie.poster_path
+        }
+      });
+      
+      toast.success(`Created "${newCollectionName}" and added movie!`);
+      setNewCollectionName('');
+      setShowCollectionsDropdown(false);
+    } catch (error) {
+      toast.error('Failed to create collection');
+    } finally {
+      setIsCreatingCollection(false);
     }
   };
   const markAsWatched = async () => {
@@ -178,6 +266,7 @@ const MovieDetail = () => {
   const releaseInfo = movie.release_dates?.results?.find(r => r.iso_3166_1 === 'US') || movie.release_dates?.results?.[0];
   const certification = releaseInfo?.release_dates?.find(rd => rd.certification)?.certification || 'N/A';
   
+  const isUpcoming = movie.release_date > today;
   const userMovie = user?.watchlist?.find(m => m.movieId === id.toString());
   const isWatched = userMovie?.status === 'watched';
   const userRating = userMovie?.rating || 0;
@@ -240,6 +329,70 @@ const MovieDetail = () => {
                 </a>
               )}
               
+              <button
+                onClick={() => navigate('/create-discussion', {
+                  state: {
+                    prefill: {
+                      movieId: movie.id,
+                      movieTitle: movie.title,
+                      moviePoster: movie.poster_path,
+                      movieImage: movie.backdrop_path
+                    }
+                  }
+                })}
+                className="px-10 py-5 rounded-2xl border-2 border-white/20 bg-white/5 backdrop-blur-md text-white hover:border-gold-text hover:text-gold-text hover:bg-gold-text/5 transition-all flex items-center gap-4 text-xl font-black uppercase tracking-widest shadow-lg"
+              >
+                <MessageSquare className="w-7 h-7" /> Discuss This
+              </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowCollectionsDropdown(!showCollectionsDropdown)}
+                  className="px-10 py-5 rounded-2xl border-2 border-white/20 bg-white/5 backdrop-blur-md text-white hover:border-gold-text hover:text-gold-text hover:bg-gold-text/5 transition-all flex items-center gap-4 text-xl font-black uppercase tracking-widest shadow-lg"
+                >
+                  <FolderOpen className="w-7 h-7" /> Save to...
+                </button>
+                {showCollectionsDropdown && (
+                   <div className="absolute top-[100%] mt-2 left-0 w-64 bg-[#1a1a1a] border border-gold-text/30 rounded-xl shadow-2xl z-50 p-2 text-left animate-in fade-in slide-in-from-top-2">
+                      <div className="mb-2 p-1 border-b border-white/10 pb-2">
+                        <form onSubmit={handleCreateAndAdd} className="flex gap-2">
+                          <input 
+                            type="text"
+                            placeholder="New Collection..."
+                            className="bg-black/50 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:border-gold-text outline-none flex-1"
+                            value={newCollectionName}
+                            onChange={(e) => setNewCollectionName(e.target.value)}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          />
+                          <button 
+                            type="submit"
+                            disabled={isCreatingCollection || !newCollectionName.trim()}
+                            className="p-1.5 bg-gold-text text-black rounded-lg hover:scale-105 active:scale-95 transition-all text-xs"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </form>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                        {collections.length === 0 ? (
+                          <p className="text-[10px] text-center p-4 text-gray-500 uppercase font-black tracking-widest leading-relaxed">No Collections<br/>Create one above!</p>
+                        ) : (
+                          collections.map(c => (
+                            <button 
+                              key={c._id} 
+                              onClick={() => addToCollection(c._id)} 
+                              className="w-full text-left p-3 hover:bg-gold-text/10 group rounded-lg text-sm font-bold text-white mb-1 last:mb-0 transition-all flex items-center justify-between"
+                            >
+                              <span className="truncate pr-4">{c.name}</span>
+                              <Plus className="w-3.5 h-3.5 text-gold-text opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                          ))
+                        )}
+                      </div>
+                   </div>
+                )}
+              </div>
+              
               {!isWatched ? (
                 <>
                   {!userMovie && (
@@ -256,6 +409,20 @@ const MovieDetail = () => {
                   >
                     <CheckCircle className="w-7 h-7" /> Already Watched
                   </button>
+                  {isUpcoming && (
+                    <button 
+                      onClick={toggleHype}
+                      className={`px-10 py-5 rounded-2xl transition-all flex items-center gap-4 text-xl font-black uppercase tracking-widest ${
+                        hypeInfo.isHyped 
+                          ? 'bg-gold-text text-black shadow-[0_0_15px_rgba(255,215,0,0.5)] border-2 border-gold-text' 
+                          : 'border-2 border-white/20 text-gold-text hover:border-gold-text'
+                      }`}
+                    >
+                      <span className="text-2xl">📈</span> 
+                      {hypeInfo.isHyped ? 'Hyped' : 'Hype'} 
+                      <span className="bg-black/20 px-2 py-1 rounded-md text-sm">{hypeInfo.hypeCount}</span>
+                    </button>
+                  )}
                 </>
               ) : (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 bg-gold-text/10 border border-gold-text/30 rounded-2xl px-6 py-4 sm:px-10 sm:py-5 w-full sm:w-auto">
@@ -437,6 +604,14 @@ const MovieDetail = () => {
                  <div>
                    <p className="text-gray-500 uppercase text-xs font-black tracking-[0.2em] mb-2">Original Language</p>
                    <p className="text-xl font-bold uppercase">{movie.original_language}</p>
+                 </div>
+              )}
+              {movie.release_date && (
+                 <div>
+                   <p className="text-gray-500 uppercase text-xs font-black tracking-[0.2em] mb-2">Release Date</p>
+                   <p className={`text-xl font-bold ${isUpcoming ? 'text-gold-text italic' : 'text-white'}`}>
+                     {isUpcoming ? `Releasing on ${movie.release_date}` : `Released on ${movie.release_date}`}
+                   </p>
                  </div>
               )}
             </div>

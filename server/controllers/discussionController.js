@@ -2,17 +2,23 @@ const Discussion = require('../models/Discussion');
 const DiscussionPost = require('../models/DiscussionPost');
 const Notification = require('../models/Notification');
 const Connection = require('../models/Connection');
+const { uploadImage } = require('../utils/cloudinary');
 
 exports.createDiscussion = async (req, res) => {
   try {
     const { movie, caption, thoughts, image, invitedIds } = req.body;
     
+    let finalImage = image;
+    if (image && image.startsWith('data:image')) {
+      finalImage = await uploadImage(image, 'discussions');
+    }
+
     const newDiscussion = new Discussion({
       creator: req.user.id,
       movie,
       caption,
       thoughts,
-      image,
+      image: finalImage,
       invited: invitedIds,
       participants: [req.user.id],
       status: 'draft' // status becomes 'active' after first invitee accepts
@@ -75,7 +81,8 @@ exports.getDiscussion = async (req, res) => {
   try {
     const { id } = req.params;
     const discussion = await Discussion.findById(id)
-      .populate('creator participants invited', 'name characterName email profileImage');
+      .populate('creator participants invited', 'name characterName email profileImage')
+      .populate('seenBy.userId', 'characterName');
     
     if (!discussion) return res.status(404).json({ message: 'Discussion not found' });
 
@@ -107,11 +114,16 @@ exports.createPost = async (req, res) => {
       return res.status(403).json({ message: 'Only participants can post in this discussion' });
     }
 
+    let finalImageUrl = imageUrl;
+    if (imageUrl && imageUrl.startsWith('data:image')) {
+      finalImageUrl = await uploadImage(imageUrl, 'discussions');
+    }
+
     const post = new DiscussionPost({
       discussion: discussionId,
       author: req.user.id,
       text,
-      imageUrl,
+      imageUrl: finalImageUrl,
       parentPostId: parentPostId || null
     });
 
@@ -121,6 +133,31 @@ exports.createPost = async (req, res) => {
     discussion.updatedAt = new Date();
     await discussion.save();
     
+    // Process mentions
+    const mentionRegex = /@([a-zA-Z0-9_]+)/g;
+    let match;
+    const mentionedCharacters = [];
+    while ((match = mentionRegex.exec(text)) !== null) {
+      mentionedCharacters.push(match[1].toLowerCase());
+    }
+    
+    if (mentionedCharacters.length > 0) {
+      const User = require('../models/User');
+      const mentionedUsers = await User.find({ characterName: { $in: mentionedCharacters } });
+      for (const mUser of mentionedUsers) {
+        if (mUser._id.toString() !== req.user.id) {
+          const notif = new Notification({
+            recipient: mUser._id,
+            sender: req.user.id,
+            type: 'mention',
+            referenceId: discussionId,
+            message: `mentioned you in a discussion.`
+          });
+          await notif.save();
+        }
+      }
+    }
+
     const populatedPost = await DiscussionPost.findById(post._id).populate('author', 'name characterName email profileImage');
 
     res.json(populatedPost);
@@ -200,6 +237,26 @@ exports.deleteDiscussion = async (req, res) => {
     await Discussion.findByIdAndDelete(id);
 
     res.json({ message: 'Discussion deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.seenDiscussion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const discussion = await Discussion.findById(id);
+    if (!discussion) return res.status(404).json({ message: 'Discussion not found' });
+
+    const seenIndex = discussion.seenBy.findIndex(s => s.userId.toString() === req.user.id);
+    if (seenIndex > -1) {
+      discussion.seenBy[seenIndex].seenAt = new Date();
+    } else {
+      discussion.seenBy.push({ userId: req.user.id, seenAt: new Date() });
+    }
+    
+    await discussion.save();
+    res.json({ message: 'Seen updated' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

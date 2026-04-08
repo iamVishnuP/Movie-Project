@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, UserPlus, MessageSquare, Check, X, Clock } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, Check, X, Clock, AtSign } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -101,19 +101,22 @@ const NotificationBell = ({ forceShow = false, onSelect }) => {
               notifications.map((n) => (
                 <div 
                   key={n._id} 
-                  className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors relative ${!n.read ? 'bg-gold-text/[0.03]' : ''}`}
-                  onClick={() => !n.read && markAsRead(n._id)}
+                  className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors relative cursor-pointer ${!n.read ? 'bg-gold-text/[0.03]' : ''}`}
+                  onClick={() => {
+                    if (!n.read) markAsRead(n._id);
+                    if (n.type === 'discussion_invite' || n.type === 'mention') {
+                      if (onSelect) onSelect();
+                      navigate(`/discussion/${n.referenceId}`);
+                      setIsOpen(false);
+                    }
+                  }}
                 >
                   <div className="flex gap-3">
                     <div className="w-10 h-10 rounded-full bg-white/5 flex-shrink-0 flex items-center justify-center">
-                      {n.type === 'connection_request' ? <UserPlus className="w-5 h-5 text-blue-400" /> : <MessageSquare className="w-5 h-5 text-gold-text" />}
+                      {n.type === 'connection_request' ? <UserPlus className="w-5 h-5 text-blue-400" /> : n.type === 'mention' ? <AtSign className="w-5 h-5 text-gold-text" /> : <MessageSquare className="w-5 h-5 text-gold-text" />}
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-white" onClick={() => {
-                        if (onSelect) onSelect();
-                        if (n.type === 'discussion_invite') navigate(`/discussion/${n.referenceId}`);
-                        setIsOpen(false);
-                      }}>
+                      <p className="text-xs text-white">
                         <span className="font-bold gold-text">@{n.sender?.characterName}</span> {n.message}
                       </p>
                       <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">
