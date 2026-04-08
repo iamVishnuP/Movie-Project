@@ -4,11 +4,13 @@ import api from '../utils/api';
 import { Bookmark, Star, Play, Trash2, CheckCircle, Loader2, Bookmark as BookmarkIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const Watchlist = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialStatus = searchParams.get('status') || 'pending';
+  const { setUser } = useAuth();
   const [watchlist, setWatchlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(initialStatus);
@@ -30,8 +32,11 @@ const Watchlist = () => {
 
   const removeFromWatchlist = async (movieId) => {
     try {
-      await api.delete(`/movies/watchlist/remove/${movieId}`);
+      const response = await api.delete(`/movies/watchlist/remove/${movieId}`);
       setWatchlist(prev => prev.filter(m => m.movieId !== movieId));
+      if (response.data.watchlist) {
+        setUser(prev => ({ ...prev, watchlist: response.data.watchlist }));
+      }
       toast.success('Removed from watchlist');
     } catch (error) {
       toast.error('Failed to remove movie');
@@ -40,8 +45,11 @@ const Watchlist = () => {
 
   const markAsWatched = async (movieId) => {
     try {
-      await api.put(`/movies/watchlist/watched/${movieId}`);
+      const response = await api.put(`/movies/watchlist/watched/${movieId}`);
       setWatchlist(prev => prev.map(m => m.movieId === movieId ? { ...m, status: 'watched' } : m));
+      if (response.data.watchlist) {
+        setUser(prev => ({ ...prev, watchlist: response.data.watchlist }));
+      }
       toast.success('Marked as watched');
     } catch (error) {
       toast.error('Failed to update status');
@@ -53,12 +61,15 @@ const Watchlist = () => {
       const payload = { rating };
       if (reviewText !== undefined) payload.reviewText = reviewText;
       
-      await api.put(`/movies/watchlist/rate/${movieId}`, payload);
+      const response = await api.put(`/movies/watchlist/rate/${movieId}`, payload);
       setWatchlist(prev => prev.map(m => m.movieId === movieId ? { 
         ...m, 
         rating, 
         review: reviewText !== undefined ? reviewText : m.review 
       } : m));
+      if (response.data.watchlist) {
+        setUser(prev => ({ ...prev, watchlist: response.data.watchlist }));
+      }
       toast.success('Rating saved!');
     } catch (error) {
       toast.error('Failed to save rating');
@@ -67,12 +78,15 @@ const Watchlist = () => {
 
   const removeRating = async (movieId) => {
     try {
-      await api.delete(`/movies/watchlist/rate/${movieId}`);
+      const response = await api.delete(`/movies/watchlist/rate/${movieId}`);
       setWatchlist(prev => prev.map(m => m.movieId === movieId ? { 
         ...m, 
         rating: 0, 
         review: "" 
       } : m));
+      if (response.data.watchlist) {
+        setUser(prev => ({ ...prev, watchlist: response.data.watchlist }));
+      }
       toast.success('Rating and review removed');
     } catch (error) {
       toast.error('Failed to remove rating');

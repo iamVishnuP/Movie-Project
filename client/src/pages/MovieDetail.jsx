@@ -258,34 +258,36 @@ const MovieDetail = () => {
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-6 bg-gold-text/10 border border-gold-text/30 rounded-2xl px-10 py-5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 bg-gold-text/10 border border-gold-text/30 rounded-2xl px-6 py-4 sm:px-10 sm:py-5 w-full sm:w-auto">
                    <div className="flex items-center gap-3 text-gold-text">
-                     <CheckCircle className="w-8 h-8" fill="rgba(255,215,0,0.2)" />
-                     <span className="text-xl font-black uppercase tracking-widest">Watched</span>
+                     <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8" fill="rgba(255,215,0,0.2)" />
+                     <span className="text-lg sm:text-xl font-black uppercase tracking-widest">Watched</span>
                    </div>
-                   <div className="flex items-center gap-2 border-l border-gold-text/20 pl-6">
-                     <span className="text-gray-400 text-sm font-bold uppercase mr-2">Your Rating:</span>
-                     <div className="flex gap-1">
-                       {[1, 2, 3, 4, 5].map(star => (
-                         <button 
-                          key={star} 
-                          onClick={() => rateMovie(star)}
-                          className="hover:scale-125 transition-transform"
-                         >
-                          <Star 
-                            className={`w-7 h-7 ${userRating >= star ? 'text-gold-text fill-gold-text' : 'text-gray-700'}`} 
-                          />
-                         </button>
-                       ))}
+                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 border-t sm:border-t-0 sm:border-l border-gold-text/20 pt-4 sm:pt-0 sm:pl-6 w-full sm:w-auto">
+                     <span className="text-gray-400 text-[10px] sm:text-sm font-bold uppercase mr-2">Your Rating:</span>
+                     <div className="flex items-center gap-3">
+                       <div className="flex gap-1">
+                         {[1, 2, 3, 4, 5].map(star => (
+                           <button 
+                            key={star} 
+                            onClick={() => rateMovie(star)}
+                            className="hover:scale-125 transition-transform"
+                           >
+                            <Star 
+                              className={`w-6 h-6 sm:w-7 sm:h-7 ${userRating >= star ? 'text-gold-text fill-gold-text' : 'text-gray-700'}`} 
+                            />
+                           </button>
+                         ))}
+                       </div>
+                        <button 
+                          onClick={removeRating}
+                          className="ml-2 p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                          title="Remove Rating & Review"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                      </div>
                    </div>
-                    <button 
-                      onClick={removeRating}
-                      className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
-                      title="Remove Rating & Review"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
                 </div>
               )}
             </div>

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { Film, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Film, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SignIn = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -53,14 +54,23 @@ const SignIn = () => {
 
             <div className="clapboard-field">
               <label className="clapboard-label">Password</label>
-              <input
-                type="password"
-                placeholder="ENTER PASSWORD"
-                className="clapboard-input"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="ENTER PASSWORD"
+                  className="clapboard-input pr-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             

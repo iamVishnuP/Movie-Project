@@ -13,11 +13,33 @@ const sendOTPEmail = async (toEmail, subject, otp) => {
       to: [{ email: toEmail }],
       subject: subject,
       htmlContent: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;">
-          <h2 style="color: #ffd700;">Welcome to Movie Discovery!</h2>
-          <p>Your OTP for account verification is:</p>
-          <h1 style="background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px solid #ffd700;">${otp}</h1>
-          <p>This OTP will expire in 10 minutes.</p>
+        <div style="background-color: #000; padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center;">
+          <div style="max-width: 500px; margin: 0 auto; background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); border: 2px solid #ffd700; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <div style="background-color: #ffd700; padding: 15px; color: #000; font-weight: 900; letter-spacing: 5px; text-transform: uppercase; font-size: 14px;">
+              Admit One - Movie Discovery
+            </div>
+            
+            <div style="padding: 40px 20px;">
+              <div style="color: #ffd700; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 10px;">
+                Your Access Code
+              </div>
+              <div style="color: #fff; font-size: 48px; font-weight: 900; letter-spacing: 15px; margin: 20px 0; padding: 20px; border-top: 1px dashed #333; border-bottom: 1px dashed #333; background-color: rgba(255,215,0,0.05);">
+                ${otp}
+              </div>
+              <div style="color: #888; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 20px;">
+                Valid for 10 Minutes Only
+              </div>
+            </div>
+
+            <div style="background-color: #111; padding: 20px; border-top: 1px solid #222;">
+              <p style="color: #ffd700; font-size: 14px; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 2px;">
+                Enjoy the Show
+              </p>
+              <p style="color: #444; font-size: 10px; margin-top: 10px;">
+                If you didn't request this, please ignore this email.
+              </p>
+            </div>
+          </div>
         </div>
       `
     })
