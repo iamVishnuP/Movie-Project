@@ -376,7 +376,10 @@ const Navbar = () => {
           </div>
           <div className="lg:hidden">
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={() => {
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+                setShowRoomsMenu(false);
+              }}
               className="p-2 text-white hover:text-gold-text transition-colors"
             >
               {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
@@ -387,7 +390,7 @@ const Navbar = () => {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-20 bg-black z-40 animate-in slide-in-from-top duration-300" ref={mobileMenuRef}>
+        <div className="lg:hidden fixed inset-0 top-20 bg-black z-40 overflow-y-auto pb-12 animate-in slide-in-from-top duration-300" ref={mobileMenuRef}>
           <div className="flex flex-col p-6 gap-4">
             <NavLink
               to="/discover"
@@ -445,48 +448,54 @@ const Navbar = () => {
                   </div>
                   
                   <div className="max-h-[200px] overflow-y-auto pr-2 divide-y divide-white/5">
-                    {discussions.map((disc) => {
-                      const lastReadTime = localStorage.getItem(`disc_${disc._id}`);
-                      const lastReadCount = parseInt(localStorage.getItem(`disc_posts_${disc._id}`) || '0');
-                      const totalPosts = disc.postCount || 0;
-                      let unreadMsgCount = 0;
+                    {discussions.length === 0 ? (
+                      <div className="py-6 text-center bg-transparent">
+                        <p className="text-gray-500 text-[10px] italic uppercase tracking-widest">No active rooms yet</p>
+                      </div>
+                    ) : (
+                      discussions.map((disc) => {
+                        const lastReadTime = localStorage.getItem(`disc_${disc._id}`);
+                        const lastReadCount = parseInt(localStorage.getItem(`disc_posts_${disc._id}`) || '0');
+                        const totalPosts = disc.postCount || 0;
+                        let unreadMsgCount = 0;
 
-                      if (!lastReadTime) {
-                        unreadMsgCount = totalPosts || 1;
-                      } else {
-                        unreadMsgCount = Math.max(0, totalPosts - lastReadCount);
-                        if (unreadMsgCount === 0 && new Date(disc.updatedAt) > new Date(lastReadTime)) {
-                          unreadMsgCount = 1;
+                        if (!lastReadTime) {
+                          unreadMsgCount = totalPosts || 1;
+                        } else {
+                          unreadMsgCount = Math.max(0, totalPosts - lastReadCount);
+                          if (unreadMsgCount === 0 && new Date(disc.updatedAt) > new Date(lastReadTime)) {
+                            unreadMsgCount = 1;
+                          }
                         }
-                      }
 
-                      return (
-                        <div
-                          key={disc._id}
-                          onClick={() => {
-                            setIsMobileMenuOpen(false);
-                            navigate(`/discussion/${disc._id}`);
-                          }}
-                          className="flex items-center gap-3 py-2 cursor-pointer"
-                        >
-                          <img
-                            src={disc.movie?.posterPath ? `https://image.tmdb.org/t/p/w92${disc.movie.posterPath}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=No+Img'}
-                            alt={disc.movie?.title}
-                            className="w-6 h-9 object-cover rounded border border-white/10"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-xs font-bold truncate">
-                              {disc.caption || disc.movie?.title}
-                            </p>
+                        return (
+                          <div
+                            key={disc._id}
+                            onClick={() => {
+                              setIsMobileMenuOpen(false);
+                              navigate(`/discussion/${disc._id}`);
+                            }}
+                            className="flex items-center gap-3 py-2 cursor-pointer"
+                          >
+                            <img
+                              src={disc.movie?.posterPath ? `https://image.tmdb.org/t/p/w92${disc.movie.posterPath}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=No+Img'}
+                              alt={disc.movie?.title}
+                              className="w-6 h-9 object-cover rounded border border-white/10"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-xs font-bold truncate">
+                                {disc.caption || disc.movie?.title}
+                              </p>
+                            </div>
+                            {unreadMsgCount > 0 && (
+                              <span className="w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-black">
+                                {unreadMsgCount}
+                              </span>
+                            )}
                           </div>
-                          {unreadMsgCount > 0 && (
-                            <span className="w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-black">
-                              {unreadMsgCount}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               )}

@@ -164,7 +164,7 @@ const Home = () => {
               {publicDiscussions.map(disc => (
                 <div
                   key={disc._id}
-                  onClick={() => navigate(`/discussions/${disc._id}`)}
+                  onClick={() => navigate(`/discussion/${disc._id}`)}
                   className="relative rounded-2xl overflow-hidden border border-white/10 hover:border-gold-text/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-[0_0_30px_rgba(255,215,0,0.08)]"
                 >
                   {/* Backdrop */}
