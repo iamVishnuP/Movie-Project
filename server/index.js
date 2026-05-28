@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+
 const cors = require('cors');
 const dotenv = require('dotenv');
 const dns = require('dns');
@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
+require('./utils/firebase'); // Initialize Firebase Admin
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,9 +41,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/movies', require('./routes/movie'));
@@ -52,6 +51,7 @@ app.use('/api/discussions', require('./routes/discussion'));
 app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/collections', require('./routes/collection'));
 app.use('/api/hypes', require('./routes/hype'));
+app.use('/api/messages', require('./routes/message'));
 
 // Global error handler to capture explicitly why "Update failed"
 app.use((err, req, res, next) => {

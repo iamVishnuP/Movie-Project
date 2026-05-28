@@ -11,7 +11,8 @@ import {
   Check, 
   Clapperboard,
   Image as ImageIcon,
-  Camera 
+  Globe,
+  Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,7 @@ const CreateDiscussion = () => {
   const [thoughts, setThoughts] = useState('');
   const [customImage, setCustomImage] = useState('');
   
+  const [visibility, setVisibility] = useState('private');
   const [connections, setConnections] = useState([]);
   const [invitedIds, setInvitedIds] = useState([]);
   const [connLoading, setConnLoading] = useState(false);
@@ -67,18 +69,6 @@ const CreateDiscussion = () => {
     }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image must be under 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => setCustomImage(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleMovieSearch = async (query) => {
     if (!query.trim()) return;
@@ -94,13 +84,13 @@ const CreateDiscussion = () => {
   };
 
   const handleSubmit = async () => {
-    if (invitedIds.length === 0) {
-      toast.error('Please invite at least one connection');
+    if (visibility === 'private' && invitedIds.length === 0) {
+      toast.error('Please invite at least one connection for a private discussion');
       return;
     }
     setLoading(true);
     try {
-      const response = await api.post('/discussions/create', {
+      await api.post('/discussions/create', {
         movie: {
           id: selectedMovie.id.toString(),
           title: selectedMovie.title,
@@ -109,9 +99,10 @@ const CreateDiscussion = () => {
         caption,
         thoughts,
         image: customImage || `https://image.tmdb.org/t/p/original${selectedMovie.backdrop_path || selectedMovie.poster_path}`,
-        invitedIds
+        invitedIds,
+        visibility
       });
-      toast.success('Discussion invitation sent!');
+      toast.success(visibility === 'public' ? 'Public discussion created!' : 'Discussion invitation sent!');
       navigate('/profile');
     } catch (error) {
       toast.error('Failed to create discussion');
@@ -220,35 +211,63 @@ const CreateDiscussion = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Cover Image</label>
+                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Room Visibility</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setVisibility('private')}
+                    className={`flex items-center justify-center gap-3 py-4 px-5 rounded-xl border-2 font-black uppercase tracking-widest text-sm transition-all ${
+                      visibility === 'private'
+                        ? 'bg-gold-text/10 border-gold-text text-gold-text shadow-[0_0_20px_rgba(255,215,0,0.1)]'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" /> Private
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibility('public')}
+                    className={`flex items-center justify-center gap-3 py-4 px-5 rounded-xl border-2 font-black uppercase tracking-widest text-sm transition-all ${
+                      visibility === 'public'
+                        ? 'bg-gold-text/10 border-gold-text text-gold-text shadow-[0_0_20px_rgba(255,215,0,0.1)]'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" /> Public
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2 font-bold uppercase tracking-widest">
+                  {visibility === 'public'
+                    ? '🌍 Anyone can view and join the conversation'
+                    : '🔒 Only invited connections can view and post'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Cover Image URL (Optional)</label>
                 <div className="flex flex-col gap-4">
-                  {customImage ? (
-                    <div className="relative rounded-xl overflow-hidden aspect-video border border-gold-text/30 group">
-                      <img src={customImage} className="w-full h-full object-cover" alt="preview" />
+                  <div className="relative rounded-xl overflow-hidden aspect-video border border-gold-text/30 group">
+                    <img 
+                      src={customImage || (selectedMovie ? `https://image.tmdb.org/t/p/w1280${selectedMovie.backdrop_path || selectedMovie.poster_path}` : '')} 
+                      className="w-full h-full object-cover" 
+                      alt="preview" 
+                    />
+                    {customImage && (
                       <button 
                         onClick={() => setCustomImage('')}
                         className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-full hover:bg-red-500 transition-all opacity-0 group-hover:opacity-100"
                       >
                         <X className="w-4 h-4" />
                       </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center gap-3 w-full aspect-video bg-white/5 border-2 border-dashed border-white/10 rounded-xl cursor-pointer hover:border-gold-text/30 hover:bg-gold-text/5 transition-all">
-                      <Camera className="w-8 h-8 text-gray-500" />
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-gray-300">Upload Cover Image</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">PNG, JPG up to 2MB</p>
-                      </div>
-                      <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                    </label>
-                  )}
+                    )}
+                  </div>
                   <div className="relative">
                      <ImageIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                      <input 
                       type="text" 
-                      placeholder="Or paste an image URL..."
+                      placeholder="Paste an image URL (leave blank for movie image)"
                       className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-14 focus:border-gold-text outline-none font-bold tracking-tight text-sm"
-                      value={customImage.startsWith('data:') ? '' : customImage}
+                      value={customImage}
                       onChange={(e) => setCustomImage(e.target.value)}
                     />
                   </div>
@@ -260,10 +279,10 @@ const CreateDiscussion = () => {
                <button onClick={() => setStep(1)} className="flex-1 py-4 border border-white/10 rounded-xl font-black uppercase tracking-widest hover:bg-white/5 transition-all">Back</button>
                <button 
                  disabled={!caption || !thoughts}
-                 onClick={() => setStep(3)}
+                 onClick={() => visibility === 'public' && invitedIds.length === 0 ? handleSubmit() : setStep(3)}
                  className="flex-[2] py-4 bg-gold-text text-black rounded-xl font-black uppercase tracking-widest hover:brightness-110 disabled:opacity-30 transition-all flex items-center justify-center gap-2"
                >
-                 Invite Connection <Users className="w-5 h-5" />
+                 {visibility === 'public' ? <><Globe className="w-5 h-5" /> Launch Room</> : <><Users className="w-5 h-5" /> Invite Connection</>}
                </button>
             </div>
           </div>
@@ -272,7 +291,11 @@ const CreateDiscussion = () => {
         {step === 3 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <h2 className="text-xl font-bold uppercase mb-6 flex items-center gap-3"><Users className="text-gold-text" /> Invite Connection</h2>
-            <p className="text-gray-500 text-sm mb-6 uppercase tracking-wider font-bold">You must invite at least one connection to start the room.</p>
+            <p className="text-gray-500 text-sm mb-6 uppercase tracking-wider font-bold">
+              {visibility === 'public'
+                ? 'Optionally invite connections — anyone can join your public room.'
+                : 'You must invite at least one connection to start the room.'}
+            </p>
             
             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2">
               {connections.map(user => (
@@ -306,11 +329,11 @@ const CreateDiscussion = () => {
             <div className="flex gap-4 mt-12">
                <button onClick={() => setStep(2)} className="flex-1 py-4 border border-white/10 rounded-xl font-black uppercase tracking-widest hover:bg-white/5 transition-all">Back</button>
                <button 
-                 disabled={invitedIds.length === 0 || loading}
+                 disabled={(visibility === 'private' && invitedIds.length === 0) || loading}
                  onClick={handleSubmit}
                  className="flex-[2] py-4 bg-gold-text text-black rounded-xl font-black uppercase tracking-widest hover:brightness-110 disabled:opacity-30 transition-all flex items-center justify-center gap-2"
                >
-                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send Invitation <Send className="w-5 h-5" /></>}
+                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : visibility === 'public' ? <><Globe className="w-5 h-5" /> Launch Room</> : <>Send Invitation <Send className="w-5 h-5" /></>}
                </button>
             </div>
           </div>

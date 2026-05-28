@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../utils/api';
 import { Check, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Film } from "lucide-react";
 
 const genres = [
   { id: 28, name: 'Action' },
@@ -28,7 +29,7 @@ const GenreSelection = () => {
   const navigate = useNavigate();
 
   const toggleGenre = (id) => {
-    setSelected(prev => 
+    setSelected(prev =>
       prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]
     );
   };
@@ -57,8 +58,8 @@ const GenreSelection = () => {
 
       <div className="w-full max-w-4xl relative">
         <div className="flex flex-col items-center mb-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-gold-text flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(255,215,0,0.3)]">
-            <Sparkles className="w-8 h-8 text-black" />
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center mb-4 shadow-lg shadow-yellow-500/20 border border-yellow-400/30">
+            <Film className="w-6 h-6 text-black" />
           </div>
           <h1 className="text-4xl font-bold gold-text">Choose Your Genres</h1>
           <p className="text-gray-400 mt-2 text-lg">Select at least 1 genre you love</p>
@@ -70,8 +71,8 @@ const GenreSelection = () => {
               key={genre.id}
               onClick={() => toggleGenre(genre.id)}
               className={`relative p-6 rounded-xl border-2 transition-all duration-300 flex items-center justify-center font-bold text-lg
-                ${selected.includes(genre.id) 
-                  ? 'selection-card-selected' 
+                ${selected.includes(genre.id)
+                  ? 'selection-card-selected'
                   : 'bg-white/5 border-white/10 text-gray-400 hover:border-gold-text/50 hover:text-white'}`}
             >
               {genre.name}

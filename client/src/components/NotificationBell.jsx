@@ -124,7 +124,7 @@ const NotificationBell = ({ forceShow = false, onSelect }) => {
                         {new Date(n.createdAt).toLocaleDateString()}
                       </div>
 
-                      {!n.read && (n.type === 'connection_request' || n.type === 'discussion_invite') && (
+                      {n.resolved !== true && (n.type === 'connection_request' || n.type === 'discussion_invite') && (
                         <div className="flex gap-2 mt-3">
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleRespond(n, 'accepted'); }}

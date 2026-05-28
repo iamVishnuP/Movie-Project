@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import { 
-  User as UserIcon, 
-  Settings, 
-  Trash2, 
-  Plus, 
-  Loader2, 
-  Search, 
-  ChevronRight, 
-  Bookmark, 
+import {
+  User as UserIcon,
+  Settings,
+  Trash2,
+  Plus,
+  Loader2,
+  Search,
+  ChevronRight,
+  Bookmark,
   CheckCircle,
   Clapperboard,
   Languages,
@@ -163,7 +163,7 @@ const Profile = () => {
 
     return (
       <div className={`glass-card border-white/5 mb-6 overflow-hidden transition-all duration-300 ${isExpanded ? 'ring-1 ring-gold-text/30' : ''}`}>
-        <div 
+        <div
           className="flex items-center justify-between p-6 cursor-pointer hover:bg-white/5 transition-colors"
           onClick={() => setEditingField(isExpanded ? null : field)}
         >
@@ -186,8 +186,8 @@ const Profile = () => {
             {isSearchable ? (
               <div className="mb-6 relative mt-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder={`Search to add ${title}...`}
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-2.5 pl-10 pr-4 focus:border-gold-text outline-none text-sm transition-all"
                   value={searchTerm}
@@ -199,14 +199,14 @@ const Profile = () => {
                 {searchResults.length > 0 && (
                   <div className="absolute top-full mt-2 w-full bg-black/95 border border-white/10 rounded-lg overflow-hidden z-20 shadow-2xl backdrop-blur-xl">
                     {searchResults.map(res => (
-                      <button 
+                      <button
                         key={res.id}
                         onClick={() => addItem(field, res)}
                         className="w-full text-left p-3 hover:bg-white/10 flex items-center gap-3 border-b border-white/5 last:border-none group"
                       >
-                        <img 
-                          src={res.profile_path || res.poster_path ? `https://image.tmdb.org/t/p/w92${res.profile_path || res.poster_path}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=N/A'} 
-                          className="w-8 h-10 object-cover rounded shadow-sm" 
+                        <img
+                          src={res.profile_path || res.poster_path ? `https://image.tmdb.org/t/p/w92${res.profile_path || res.poster_path}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=N/A'}
+                          className="w-8 h-10 object-cover rounded shadow-sm"
                           alt={res.name || res.title}
                         />
                         <span className="text-sm font-medium group-hover:text-gold-text transition-colors">{res.name || res.title}</span>
@@ -218,19 +218,18 @@ const Profile = () => {
             ) : (
               <div className="mb-6 mt-4 flex flex-wrap gap-2">
                 {(field === 'selectedGenres' ? GENRES : LANGUAGES).map(option => {
-                  const isSelected = field === 'selectedGenres' 
+                  const isSelected = field === 'selectedGenres'
                     ? user?.selectedGenres?.includes(option.id.toString())
                     : user?.selectedLanguages?.includes(option.id.toString());
-                  
+
                   return (
                     <button
                       key={option.id}
                       onClick={() => isSelected ? removeItem(field, option.id) : addItem(field, option.id)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 border ${
-                        isSelected 
-                          ? 'bg-gold-text text-black border-gold-text shadow-lg' 
-                          : 'bg-white/5 border-white/10 text-gray-400 hover:border-gold-text/50 hover:text-white'
-                      }`}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 border ${isSelected
+                        ? 'bg-gold-text text-black border-gold-text shadow-lg'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-gold-text/50 hover:text-white'
+                        }`}
                     >
                       {option.name}
                     </button>
@@ -266,7 +265,7 @@ const Profile = () => {
                       )}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4 text-center">
                         <span className="text-xs font-bold text-white mb-4 line-clamp-2 uppercase">{name}</span>
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             removeItem(field, item.id || item);
@@ -315,7 +314,7 @@ const Profile = () => {
     <main className="pt-24 min-h-screen bg-black text-white px-4 md:px-8 pb-20">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row gap-8">
-          
+
           {/* Left Column: Account Details */}
           <div className="w-full md:w-1/3">
             <div className="glass-card p-8 border-gold-text/20 text-center sticky top-24">
@@ -329,10 +328,10 @@ const Profile = () => {
                 </div>
                 <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
                   <Camera className="w-8 h-8 text-white" />
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files[0];
                       if (file) {
@@ -346,7 +345,7 @@ const Profile = () => {
                         reader.readAsDataURL(file);
                         e.target.value = '';
                       }
-                    }} 
+                    }}
                   />
                 </label>
               </div>
@@ -354,50 +353,50 @@ const Profile = () => {
               <p className="text-sm gold-text/80 font-bold uppercase tracking-widest mb-1">@{user?.characterName}</p>
               <p className="text-gray-500 mb-8">{user?.email}</p>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <button 
-                    onClick={() => setShowConnectionsList(true)}
-                    className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group relative"
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <button
+                  onClick={() => setShowConnectionsList(true)}
+                  className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group relative"
+                >
+                  <p className="text-2xl font-black gold-text">{connections.length}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Connections</p>
+                  <div
+                    onClick={(e) => { e.stopPropagation(); navigate('/find-people'); }}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-gold-text text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
                   >
-                    <p className="text-2xl font-black gold-text">{connections.length}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Connections</p>
-                    <div 
-                      onClick={(e) => { e.stopPropagation(); navigate('/find-people'); }}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-gold-text text-black rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </div>
-                  </button>
-                  <div className="bg-white/5 p-4 rounded-xl">
-                    <p className="text-2xl font-black gold-text">{discussions.length}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 font-bold">Groups</p>
+                    <Plus className="w-4 h-4" />
                   </div>
+                </button>
+                <div className="bg-white/5 p-4 rounded-xl">
+                  <p className="text-2xl font-black gold-text">{discussions.length}</p>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1 font-bold">Groups</p>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                  <button 
-                    onClick={() => navigate('/watchlist?status=pending')}
-                    className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group"
-                  >
-                    <p className="text-2xl font-black gold-text">{watchlistCount}</p>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Watchlist</p>
-                  </button>
-                  <button 
-                    onClick={() => navigate('/watchlist?status=watched')}
-                    className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group"
-                  >
-                    <p className="text-2xl font-black gold-text">{watchedCount}</p>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Watched</p>
-                  </button>
-                </div>
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <button
+                  onClick={() => navigate('/watchlist?status=pending')}
+                  className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group"
+                >
+                  <p className="text-2xl font-black gold-text">{watchlistCount}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Watchlist</p>
+                </button>
+                <button
+                  onClick={() => navigate('/watchlist?status=watched')}
+                  className="bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-colors group"
+                >
+                  <p className="text-2xl font-black gold-text">{watchedCount}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 group-hover:text-white font-bold">Watched</p>
+                </button>
+              </div>
 
               <div className="pt-6 border-t border-white/5 text-left">
                 <div className="flex items-center justify-between text-sm text-gray-400 hover:text-white cursor-pointer group mb-2">
                   <div className="flex items-center gap-3">
-                    <Settings className="w-4 h-4" />
-                    <span>Account Settings</span>
+
+
                   </div>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+
                 </div>
               </div>
             </div>
@@ -406,57 +405,56 @@ const Profile = () => {
           {/* Right Column: Preferences */}
           <div className="w-full md:w-2/3">
             <div className="mb-12">
-               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-                 <h2 className="text-3xl md:text-4xl font-black uppercase gold-text tracking-tighter">Your Discussions</h2>
-                 <button onClick={() => navigate('/create-discussion')} className="px-6 py-2 bg-gold-text text-black rounded-full font-black uppercase text-xs hover:scale-105 transition-all">Start New</button>
-               </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 {discussions.map(disc => (
-                   <div key={disc._id} className="glass-card overflow-hidden group hover:border-gold-text/30 transition-all">
-                      <div className="relative h-32 w-full">
-                         <img src={disc.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all opacity-40 group-hover:opacity-60" alt="backdrop" />
-                         <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
-                         <div className="absolute bottom-4 left-4 flex gap-4 items-end">
-                            <img src={disc.movie.posterPath ? `https://image.tmdb.org/t/p/w92${disc.movie.posterPath}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=No+Img'} className="w-12 h-18 object-cover rounded shadow-2xl border border-white/10" alt="poster" />
-                            <div className="pb-1">
-                               <p className="text-xs font-black gold-text truncate w-40">{disc.movie.title}</p>
-                               <p className="text-[10px] text-white font-bold truncate w-40">{disc.caption}</p>
-                            </div>
-                         </div>
-                         {disc.creator === user.id && (
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleDeleteDiscussion(disc._id); }}
-                             className="absolute top-4 right-4 p-2 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                           >
-                             <Trash2 className="w-4 h-4" />
-                           </button>
-                         )}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+                <h2 className="text-3xl md:text-4xl font-black uppercase gold-text tracking-tighter">Your Discussions</h2>
+                <button onClick={() => navigate('/create-discussion')} className="px-6 py-2 bg-gold-text text-black rounded-full font-black uppercase text-xs hover:scale-105 transition-all">Start New</button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {discussions.map(disc => (
+                  <div key={disc._id} className="glass-card overflow-hidden group hover:border-gold-text/30 transition-all">
+                    <div className="relative h-32 w-full">
+                      <img src={disc.image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all opacity-40 group-hover:opacity-60" alt="backdrop" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent"></div>
+                      <div className="absolute bottom-4 left-4 flex gap-4 items-end">
+                        <img src={disc.movie.posterPath ? `https://image.tmdb.org/t/p/w92${disc.movie.posterPath}` : 'https://placehold.co/92x138/1a1a1a/ffd700?text=No+Img'} className="w-12 h-18 object-cover rounded shadow-2xl border border-white/10" alt="poster" />
+                        <div className="pb-1">
+                          <p className="text-xs font-black gold-text truncate w-40">{disc.movie.title}</p>
+                          <p className="text-[10px] text-white font-bold truncate w-40">{disc.caption}</p>
+                        </div>
                       </div>
-                      <div className="p-4 flex justify-between items-center bg-white/5">
-                         <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{disc.participants.length} Joined</span>
-                         </div>
-                         <button 
-                           onClick={() => navigate(`/discussion/${disc._id}`)}
-                           className="text-[10px] font-black uppercase tracking-widest gold-text hover:underline"
-                         >
-                           Enter Room
-                         </button>
+                      {disc.creator === user.id && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteDiscussion(disc._id); }}
+                          className="absolute top-4 right-4 p-2 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="p-4 flex justify-between items-center bg-white/5">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-gray-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{disc.participants.length} Joined</span>
                       </div>
-                   </div>
-                 ))}
-                 {discussions.length === 0 && (
-                   <div className="col-span-full py-20 text-center glass-card border-dashed opacity-30">
-                      <MessageSquare className="w-10 h-10 text-gray-500 mx-auto mb-2" />
-                      <p className="text-xs italic uppercase tracking-widest">No active discussions</p>
-                   </div>
-                 )}
-               </div>
+                      <button
+                        onClick={() => navigate(`/discussion/${disc._id}`)}
+                        className="text-[10px] font-black uppercase tracking-widest gold-text hover:underline"
+                      >
+                        Enter Room
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {discussions.length === 0 && (
+                  <div className="col-span-full py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10 opacity-30">
+                    <p className="text-gray-500 text-xs italic uppercase tracking-widest">No active discussions</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <h1 className="text-4xl font-black uppercase mb-8 gold-text tracking-tighter">Preferences</h1>
-            
+
             <Section title="Favorite Genres" icon={Clapperboard} field="selectedGenres" items={user?.selectedGenres} />
             <Section title="Preferred Languages" icon={Languages} field="selectedLanguages" items={user?.selectedLanguages} />
             <Section title="Favorite Directors" icon={UserIcon} field="favoriteDirectors" items={user?.favoriteDirectors} isSearchable />
@@ -472,35 +470,35 @@ const Profile = () => {
       </div>
       {showConnectionsList && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-6 bg-black animate-in fade-in duration-300">
-           <div className="w-full sm:max-w-xl h-full sm:h-auto sm:max-h-[80vh] bg-black sm:bg-[#0a0a0a] border border-white/10 flex flex-col rounded-none sm:rounded-[2rem]">
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                 <h2 className="text-2xl font-black uppercase tracking-tighter gold-text">Your Connections</h2>
-                 <button onClick={() => setShowConnectionsList(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
-              </div>
-              <div className="p-6 overflow-y-auto space-y-4">
-                 {connections.map(connUser => (
-                   <div key={connUser._id} onClick={() => { setShowConnectionsList(false); navigate(`/user/${connUser._id}`); }} className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center gap-4 hover:border-gold-text/40 transition-all group cursor-pointer">
-                      <div className="w-12 h-12 rounded-full bg-gold-text flex items-center justify-center text-black font-black text-xl overflow-hidden shadow-lg border-2 border-white/5">
-                        {connUser.profileImage ? (
-                          <img src={connUser.profileImage} alt={connUser.name} className="w-full h-full object-cover" />
-                        ) : (
-                          connUser.name?.[0]?.toUpperCase()
-                        )}
-                      </div>
-                      <div>
-                         <p className="font-bold gold-text group-hover:underline">@{connUser.characterName}</p>
-                         <p className="text-[10px] text-gray-500 uppercase font-black">{connUser.name}</p>
-                      </div>
-                   </div>
-                 ))}
-                 {connections.length === 0 && (
-                   <div className="text-center py-12 opacity-30">
-                      <Users className="w-12 h-12 mx-auto mb-2" />
-                      <p className="text-xs italic uppercase tracking-widest font-black">Find some movie buffs first</p>
-                   </div>
-                 )}
-              </div>
-           </div>
+          <div className="w-full sm:max-w-xl h-full sm:h-auto sm:max-h-[80vh] bg-black sm:bg-[#0a0a0a] border border-white/10 flex flex-col rounded-none sm:rounded-[2rem]">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <h2 className="text-2xl font-black uppercase tracking-tighter gold-text">Your Connections</h2>
+              <button onClick={() => setShowConnectionsList(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              {connections.map(connUser => (
+                <div key={connUser._id} onClick={() => { setShowConnectionsList(false); navigate(`/user/${connUser._id}`); }} className="p-4 bg-white/5 border border-white/5 rounded-xl flex items-center gap-4 hover:border-gold-text/40 transition-all group cursor-pointer">
+                  <div className="w-12 h-12 rounded-full bg-gold-text flex items-center justify-center text-black font-black text-xl overflow-hidden shadow-lg border-2 border-white/5">
+                    {connUser.profileImage ? (
+                      <img src={connUser.profileImage} alt={connUser.name} className="w-full h-full object-cover" />
+                    ) : (
+                      connUser.name?.[0]?.toUpperCase()
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-bold gold-text group-hover:underline">@{connUser.characterName}</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-black">{connUser.name}</p>
+                  </div>
+                </div>
+              ))}
+              {connections.length === 0 && (
+                <div className="text-center py-12 opacity-30">
+                  <Users className="w-12 h-12 mx-auto mb-2" />
+                  <p className="text-xs italic uppercase tracking-widest font-black">Find some movie buffs first</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
       {cropImageSrc && (

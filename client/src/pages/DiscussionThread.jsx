@@ -15,7 +15,10 @@ import {
   Image as ImageIcon,
   X,
   LogOut,
-  Check
+  Check,
+  Globe,
+  Lock,
+  Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -45,6 +48,9 @@ const DiscussionThread = () => {
       setData(response.data);
       // Mark as read locally for dynamic badge
       localStorage.setItem(`disc_${id}`, new Date().toISOString());
+      if (response.data?.discussion) {
+        localStorage.setItem(`disc_posts_${id}`, (response.data.discussion.postCount || response.data.posts?.length || 0).toString());
+      }
       // Inform server
       api.post(`/discussions/${id}/seen`).catch(() => {});
     } catch (error) {
@@ -162,9 +168,23 @@ const DiscussionThread = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete this discussion room? This action cannot be undone.')) return;
+
+    try {
+      await api.delete(`/discussions/${id}`);
+      toast.success('Discussion room deleted successfully');
+      navigate('/rooms');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete discussion room');
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 text-gold-text animate-spin" /></div>;
 
   const { discussion, posts, isParticipant } = data;
+  const isPublic = discussion.visibility === 'public';
+  const canPost = isParticipant || isPublic;
 
   const renderPost = (post, isReply = false) => (
     <div key={post._id} className={`${isReply ? 'ml-4 md:ml-12 border-l-2 border-white/5 pl-4 md:pl-6 mt-4' : 'glass-card p-4 md:p-6 mb-6'} group animate-in slide-in-from-bottom-2 duration-300`}>
@@ -231,14 +251,35 @@ const DiscussionThread = () => {
 
             {isParticipant && (
               <div className="absolute top-4 right-4 md:top-6 md:right-8 z-10">
-                <button
-                  onClick={handleLeave}
-                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-                >
-                  <LogOut className="w-3 h-3" /> Exit Room
-                </button>
+                {discussion.creator?._id === user?.id ? (
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                  >
+                    <Trash2 className="w-3 h-3" /> Delete Room
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleLeave}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <LogOut className="w-3 h-3" /> Exit Room
+                  </button>
+                )}
               </div>
             )}
+
+            {/* Visibility badge */}
+            <div className="absolute top-4 left-4 md:top-6 md:left-8 z-10">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                isPublic
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                  : 'bg-white/10 border-white/20 text-gray-400'
+              }`}>
+                {isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                {isPublic ? 'Public' : 'Private'}
+              </div>
+            </div>
 
             <div className="absolute bottom-4 left-4 right-4 md:bottom-6 md:left-8 flex flex-col md:flex-row gap-4 md:gap-8 items-start md:items-end">
               <img src={discussion.movie.posterPath ? `https://image.tmdb.org/t/p/w185${discussion.movie.posterPath}` : 'https://placehold.co/185x278/1a1a1a/ffd700?text=No+Img'} className="w-20 h-28 md:w-24 md:h-36 object-cover rounded-xl shadow-2xl border-2 border-white/10" alt="poster" />
@@ -317,7 +358,7 @@ const DiscussionThread = () => {
         </div>
 
         {/* Input Dock */}
-        {isParticipant && (
+        {canPost && (
           <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-6 z-40">
             {replyTo && (
               <div className="bg-[#1a1a1a] p-3 rounded-t-2xl border-t border-l border-r border-gold-text/30 flex justify-between items-center animate-in slide-in-from-bottom-2">
@@ -395,6 +436,7 @@ const DiscussionThread = () => {
             </form>
           </div>
         )}
+
 
       </div>
     </main>

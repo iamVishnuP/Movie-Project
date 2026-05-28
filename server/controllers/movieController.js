@@ -1,12 +1,10 @@
 const axios = require('axios');
 const https = require('https');
 const NodeCache = require('node-cache');
-const User = require('../models/User');
-const Review = require('../models/Review');
+const { db, admin } = require('../utils/firebase');
+const dns = require('dns');
 
 const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
-
-const dns = require('dns');
 
 // Harden TMDB Fetcher: Custom Agent with forced IPv4 lookup
 const tmdbClient = axios.create({
@@ -141,9 +139,12 @@ exports.getUpcoming = async (req, res) => {
     let languages = [];
 
     if (req.user) {
-      const user = await User.findById(req.user.id);
-      if (user && user.selectedLanguages?.length > 0) {
-        languages = user.selectedLanguages;
+      const userDoc = await db.collection('users').doc(req.user.id).get();
+      if (userDoc.exists) {
+        const user = userDoc.data();
+        if (user.selectedLanguages?.length > 0) {
+          languages = user.selectedLanguages;
+        }
       }
     }
 
@@ -174,9 +175,12 @@ exports.getNowPlaying = async (req, res) => {
     let languages = [];
 
     if (req.user) {
-      const user = await User.findById(req.user.id);
-      if (user && user.selectedLanguages?.length > 0) {
-        languages = user.selectedLanguages;
+      const userDoc = await db.collection('users').doc(req.user.id).get();
+      if (userDoc.exists) {
+        const user = userDoc.data();
+        if (user.selectedLanguages?.length > 0) {
+          languages = user.selectedLanguages;
+        }
       }
     }
 
@@ -210,15 +214,79 @@ exports.getMovieVideos = async (req, res) => {
   }
 };
 
+const languageMap = {
+  'english': 'en',
+  'malayalam': 'ml',
+  'hindi': 'hi',
+  'tamil': 'ta',
+  'telugu': 'te',
+  'kannada': 'kn',
+  'spanish': 'es',
+  'french': 'fr',
+  'japanese': 'ja',
+  'korean': 'ko'
+};
+
 exports.searchMovies = async (req, res) => {
   try {
     const { query } = req.query;
     if (!query) return res.json([]);
-    const data = await fetchFromTMDB('/search/movie', {
-      query,
-      include_adult: false,
-    });
-    res.json(data.results);
+
+    const q = query.toLowerCase().trim();
+    let results = [];
+
+    // 1. Detect Language Search (e.g. "malayalam movies", "hindi movies")
+    const langMatch = q.match(/^([a-z]+)\s+movies$/);
+    if (langMatch && languageMap[langMatch[1]]) {
+      const data = await fetchFromTMDB('/discover/movie', {
+        with_original_language: languageMap[langMatch[1]],
+        sort_by: 'popularity.desc'
+      });
+      return res.json(data.results);
+    }
+
+    // 2. Detect Director Search (e.g. "christopher nolan movies", "movies by nolan")
+    const directorMatch = q.match(/(?:movies\s+(?:by|from)\s+|([a-z\s]+)\s+movies)/);
+    if (directorMatch) {
+      const directorName = directorMatch[1] || q.replace(/movies\s+(?:by|from)\s+/, '');
+      const personData = await fetchFromTMDB('/search/person', { query: directorName });
+      const director = personData.results?.find(p => p.known_for_department === 'Directing');
+      
+      if (director) {
+        const data = await fetchFromTMDB('/discover/movie', {
+          with_crew: director.id,
+          sort_by: 'popularity.desc'
+        });
+        return res.json(data.results);
+      }
+    }
+
+    // 3. Standard Search with User Context Boost
+    const data = await fetchFromTMDB('/search/movie', { query, include_adult: false });
+    results = data.results || [];
+
+    if (req.user && results.length > 0) {
+      const userDoc = await db.collection('users').doc(req.user.id).get();
+      if (userDoc.exists) {
+        const { selectedGenres, selectedLanguages } = userDoc.data();
+        
+        // Boost results that match user preferences
+        results.sort((a, b) => {
+          let aScore = 0;
+          let bScore = 0;
+          
+          if (selectedLanguages?.includes(a.original_language)) aScore += 2;
+          if (selectedLanguages?.includes(b.original_language)) bScore += 2;
+          
+          if (a.genre_ids?.some(id => selectedGenres?.includes(id))) aScore += 1;
+          if (b.genre_ids?.some(id => selectedGenres?.includes(id))) bScore += 1;
+          
+          return bScore - aScore;
+        });
+      }
+    }
+
+    res.json(results);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -240,8 +308,9 @@ exports.searchPersons = async (req, res) => {
 
 exports.getRecommendations = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const userDoc = await db.collection('users').doc(req.user.id).get();
+    if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+    const user = userDoc.data();
 
     const pagesToFetch = req.query.fetchAll === 'true' ? 5 : 1;
     const { selectedGenres, selectedLanguages, favoriteDirectors, favoriteMovies } = user;
@@ -325,16 +394,24 @@ exports.getRecommendations = async (req, res) => {
 exports.addToWatchlist = async (req, res) => {
   try {
     const { movieId, title, posterPath } = req.body;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const userRef = db.collection('users').doc(req.user.id);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+    const user = userDoc.data();
+    const watchlist = user.watchlist || [];
 
-    if (user.watchlist.some(m => m.movieId === movieId)) {
+    if (watchlist.some(m => m.movieId === movieId)) {
       return res.status(400).json({ message: 'Movie already in watchlist' });
     }
 
-    user.watchlist.push({ movieId, title, posterPath });
-    await user.save();
-    res.json({ message: 'Movie added to watchlist', watchlist: user.watchlist });
+    const newMovie = { movieId, title, posterPath, status: 'pending' };
+    await userRef.update({
+      watchlist: admin.firestore.FieldValue.arrayUnion(newMovie)
+    });
+    
+    watchlist.push(newMovie);
+    res.json({ message: 'Movie added to watchlist', watchlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -343,12 +420,23 @@ exports.addToWatchlist = async (req, res) => {
 exports.removeFromWatchlist = async (req, res) => {
   try {
     const { movieId } = req.params;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const userRef = db.collection('users').doc(req.user.id);
+    const userDoc = await userRef.get();
+    
+    if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+    const user = userDoc.data();
+    const watchlist = user.watchlist || [];
 
-    user.watchlist = user.watchlist.filter(m => m.movieId !== movieId);
-    await user.save();
-    res.json({ message: 'Movie removed from watchlist', watchlist: user.watchlist });
+    const movieToRemove = watchlist.find(m => m.movieId === movieId);
+    if (movieToRemove) {
+      await userRef.update({
+        watchlist: admin.firestore.FieldValue.arrayRemove(movieToRemove)
+      });
+      const newWatchlist = watchlist.filter(m => m.movieId !== movieId);
+      res.json({ message: 'Movie removed from watchlist', watchlist: newWatchlist });
+    } else {
+      res.json({ message: 'Movie not found in watchlist', watchlist });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -358,24 +446,32 @@ exports.markAsWatched = async (req, res) => {
   try {
     const { movieId } = req.params;
     const { title, posterPath } = req.body;
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    let movie = user.watchlist.find(m => m.movieId === movieId);
-    if (movie) {
-      movie.status = 'watched';
-    } else {
-      user.watchlist.push({ 
-        movieId, 
-        title: title || 'Unknown Title', 
-        posterPath: posterPath || '', 
-        status: 'watched' 
-      });
-    }
+    const userRef = db.collection('users').doc(req.user.id);
     
-    user.markModified('watchlist');
-    await user.save();
-    res.json({ message: 'Movie marked as watched', watchlist: user.watchlist });
+    await db.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found');
+      
+      const user = userDoc.data();
+      let watchlist = user.watchlist || [];
+      const movieIndex = watchlist.findIndex(m => m.movieId === movieId);
+      
+      if (movieIndex > -1) {
+        watchlist[movieIndex].status = 'watched';
+      } else {
+        watchlist.push({ 
+          movieId, 
+          title: title || 'Unknown Title', 
+          posterPath: posterPath || '', 
+          status: 'watched' 
+        });
+      }
+      
+      t.update(userRef, { watchlist });
+    });
+    
+    const updatedUserDoc = await userRef.get();
+    res.json({ message: 'Movie marked as watched', watchlist: updatedUserDoc.data().watchlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -387,43 +483,75 @@ exports.rateMovie = async (req, res) => {
     const { rating, reviewText } = req.body;
     console.log(`Rating movie ${movieId} with rating ${rating}`);
     
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const movie = user.watchlist.find(m => m.movieId === movieId);
-    if (!movie) {
-      console.log(`Movie ${movieId} not found in watchlist for user ${user.email}`);
-      return res.status(404).json({ message: 'Movie not in watchlist' });
-    }
-
-    movie.rating = rating;
-    if (reviewText !== undefined) {
-      movie.review = reviewText;
-    }
+    const userId = req.user.id;
+    const userRef = db.collection('users').doc(userId);
     
-    user.markModified('watchlist');
-    await user.save();
-
-    // Update global review collection - always do this if there's a rating
-    if (rating >= 1) {
-      const reviewData = { 
-        rating, 
-        review: reviewText || "", 
-        characterName: user.characterName || 'Anonymous',
-        profileImage: user.profileImage || "",
-        movieTitle: movie.title || 'Unknown'
-      };
-      console.log('Upserting review:', reviewData);
+    await db.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found');
       
-      await Review.findOneAndUpdate(
-        { userId: user.id, movieId },
-        reviewData,
-        { upsert: true, new: true }
-      );
-    }
+      const user = userDoc.data();
+      let watchlist = user.watchlist || [];
+      const movieIndex = watchlist.findIndex(m => m.movieId === movieId);
+      
+      if (movieIndex === -1) {
+        throw new Error('Movie not in watchlist');
+      }
+      
+      watchlist[movieIndex].rating = rating;
+      if (reviewText !== undefined) {
+        watchlist[movieIndex].review = reviewText;
+      }
+      
+      // Prepare review update if needed
+      let reviewUpdate = null;
+      if (rating >= 1) {
+        const reviewRef = db.collection('reviews').doc(`${userId}_${movieId}`);
+        const reviewDoc = await t.get(reviewRef);
+        
+        const reviewData = { 
+          userId,
+          movieId,
+          rating, 
+          review: reviewText || "", 
+          characterName: user.characterName || 'Anonymous',
+          profileImage: user.profileImage || "",
+          movieTitle: watchlist[movieIndex].title || 'Unknown',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
 
+        if (!reviewDoc.exists) {
+          reviewUpdate = { 
+            ref: reviewRef, 
+            type: 'set', 
+            data: { 
+              ...reviewData, 
+              likes: [], 
+              dislikes: [], 
+              createdAt: admin.firestore.FieldValue.serverTimestamp() 
+            } 
+          };
+        } else {
+          reviewUpdate = { ref: reviewRef, type: 'update', data: reviewData };
+        }
+      }
+
+      // Now perform all writes
+      t.update(userRef, { watchlist });
+      
+      if (reviewUpdate) {
+        if (reviewUpdate.type === 'set') {
+          t.set(reviewUpdate.ref, reviewUpdate.data);
+        } else {
+          t.update(reviewUpdate.ref, reviewUpdate.data);
+        }
+      }
+
+    });
+
+    const updatedUserDoc = await userRef.get();
     console.log('Movie rated successfully');
-    res.json({ message: 'Movie rated successfully', watchlist: user.watchlist });
+    res.json({ message: 'Movie rated successfully', watchlist: updatedUserDoc.data().watchlist });
   } catch (error) {
     console.error('Error rating movie:', error);
     res.status(500).json({ message: error.message });
@@ -434,23 +562,69 @@ exports.removeRating = async (req, res) => {
   try {
     const { movieId } = req.params;
     const userId = req.user.id;
+    const userRef = db.collection('users').doc(userId);
 
-    // 1. Clear from user's watchlist
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    await db.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found');
+      
+      const user = userDoc.data();
+      let watchlist = user.watchlist || [];
+      const movieIndex = watchlist.findIndex(m => m.movieId === movieId);
+      
+      if (movieIndex > -1) {
+        watchlist[movieIndex].rating = 0;
+        delete watchlist[movieIndex].review;
+        t.update(userRef, { watchlist });
+      }
+      
+      const reviewRef = db.collection('reviews').doc(`${userId}_${movieId}`);
+      t.delete(reviewRef);
+    });
 
-    const movie = user.watchlist.find(m => m.movieId === movieId);
-    if (movie) {
-      movie.rating = 0;
-      delete movie.review;
-      user.markModified('watchlist');
-      await user.save();
-    }
+    const updatedUserDoc = await userRef.get();
+    res.json({ message: 'Rating removed successfully', watchlist: updatedUserDoc.data().watchlist });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    // 2. Delete from global Review collection
-    await Review.findOneAndDelete({ userId, movieId });
+exports.deleteReviewText = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const userId = req.user.id;
+    const userRef = db.collection('users').doc(userId);
 
-    res.json({ message: 'Rating and review removed', watchlist: user.watchlist });
+    await db.runTransaction(async (t) => {
+      const userDoc = await t.get(userRef);
+      if (!userDoc.exists) throw new Error('User not found');
+      
+      const user = userDoc.data();
+      let watchlist = user.watchlist || [];
+      // Use loose equality or string conversion to handle string/number IDs
+      const movieIndex = watchlist.findIndex(m => String(m.movieId) === String(movieId));
+      
+      if (movieIndex > -1) {
+        // Prepare writes
+        const reviewRef = db.collection('reviews').doc(`${userId}_${movieId}`);
+        const reviewDoc = await t.get(reviewRef);
+        
+        // Update watchlist
+        watchlist[movieIndex].review = "";
+        t.update(userRef, { watchlist });
+        
+        // Update review doc if it exists
+        if (reviewDoc.exists) {
+          t.update(reviewRef, { 
+            review: "",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
+      }
+    });
+
+    const updatedUserDoc = await userRef.get();
+    res.json({ message: 'Review text deleted successfully', watchlist: updatedUserDoc.data().watchlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -459,7 +633,13 @@ exports.removeRating = async (req, res) => {
 exports.getMovieReviews = async (req, res) => {
   try {
     const { movieId } = req.params;
-    const reviews = await Review.find({ movieId }).sort({ createdAt: -1 });
+    const snapshot = await db.collection('reviews')
+      .where('movieId', '==', movieId)
+      .orderBy('createdAt', 'desc')
+      .get();
+      
+    const reviews = [];
+    snapshot.forEach(doc => reviews.push({ _id: doc.id, ...doc.data() }));
     res.json(reviews);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -470,20 +650,28 @@ exports.likeReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const userId = req.user.id;
-    const review = await Review.findById(reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    // Toggle like
-    if (review.likes.includes(userId)) {
-      review.likes = review.likes.filter(id => id.toString() !== userId);
-    } else {
-      review.likes.push(userId);
-      // Remove dislike if it exists
-      review.dislikes = review.dislikes.filter(id => id.toString() !== userId);
-    }
-
-    await review.save();
-    res.json(review);
+    const reviewRef = db.collection('reviews').doc(reviewId);
+    
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(reviewRef);
+      if (!doc.exists) throw new Error('Review not found');
+      
+      const review = doc.data();
+      let likes = review.likes || [];
+      let dislikes = review.dislikes || [];
+      
+      if (likes.includes(userId)) {
+        likes = likes.filter(id => id !== userId);
+      } else {
+        likes.push(userId);
+        dislikes = dislikes.filter(id => id !== userId);
+      }
+      
+      t.update(reviewRef, { likes, dislikes });
+    });
+    
+    const updatedDoc = await reviewRef.get();
+    res.json({ _id: reviewId, ...updatedDoc.data() });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -493,20 +681,28 @@ exports.dislikeReview = async (req, res) => {
   try {
     const { reviewId } = req.params;
     const userId = req.user.id;
-    const review = await Review.findById(reviewId);
-    if (!review) return res.status(404).json({ message: 'Review not found' });
-
-    // Toggle dislike
-    if (review.dislikes.includes(userId)) {
-      review.dislikes = review.dislikes.filter(id => id.toString() !== userId);
-    } else {
-      review.dislikes.push(userId);
-      // Remove like if it exists
-      review.likes = review.likes.filter(id => id.toString() !== userId);
-    }
-
-    await review.save();
-    res.json(review);
+    const reviewRef = db.collection('reviews').doc(reviewId);
+    
+    await db.runTransaction(async (t) => {
+      const doc = await t.get(reviewRef);
+      if (!doc.exists) throw new Error('Review not found');
+      
+      const review = doc.data();
+      let likes = review.likes || [];
+      let dislikes = review.dislikes || [];
+      
+      if (dislikes.includes(userId)) {
+        dislikes = dislikes.filter(id => id !== userId);
+      } else {
+        dislikes.push(userId);
+        likes = likes.filter(id => id !== userId);
+      }
+      
+      t.update(reviewRef, { likes, dislikes });
+    });
+    
+    const updatedDoc = await reviewRef.get();
+    res.json({ _id: reviewId, ...updatedDoc.data() });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -514,9 +710,9 @@ exports.dislikeReview = async (req, res) => {
 
 exports.getWatchlist = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json(user.watchlist);
+    const userDoc = await db.collection('users').doc(req.user.id).get();
+    if (!userDoc.exists) return res.status(404).json({ message: 'User not found' });
+    res.json(userDoc.data().watchlist || []);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

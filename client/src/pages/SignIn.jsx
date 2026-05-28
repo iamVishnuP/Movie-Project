@@ -108,9 +108,14 @@ const SignIn = () => {
                     {new Date().toLocaleDateString()}
                   </div>
                 </div>
-                <Link to="/signup" className="text-xs gold-text hover:underline mb-1">
-                  NEW MEMBER? SIGN UP
-                </Link>
+                <div className="flex flex-col items-end gap-2 mb-1">
+                  <Link to="/forgot-password" className="text-xs gold-text hover:underline">
+                    FORGOT PASSWORD?
+                  </Link>
+                  <Link to="/signup" className="text-xs gold-text hover:underline">
+                    NEW MEMBER? SIGN UP
+                  </Link>
+                </div>
               </div>
             </div>
           </form>

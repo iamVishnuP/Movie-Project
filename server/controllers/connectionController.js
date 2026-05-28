@@ -1,6 +1,5 @@
-const Connection = require('../models/Connection');
-const Notification = require('../models/Notification');
-const User = require('../models/User');
+const { db, admin } = require('../utils/firebase');
+const { Filter } = require('firebase-admin/firestore');
 
 exports.sendRequest = async (req, res) => {
   try {
@@ -8,29 +7,36 @@ exports.sendRequest = async (req, res) => {
     if (recipientId === req.user.id) return res.status(400).json({ message: "You cannot connect with yourself" });
 
     // Check existing connection
-    const existingConnection = await Connection.findOne({
-      $or: [
-        { requester: req.user.id, recipient: recipientId },
-        { requester: recipientId, recipient: req.user.id }
-      ]
+    const snapshot = await db.collection('connections').where(
+      Filter.or(
+        Filter.and(Filter.where('requester', '==', req.user.id), Filter.where('recipient', '==', recipientId)),
+        Filter.and(Filter.where('requester', '==', recipientId), Filter.where('recipient', '==', req.user.id))
+      )
+    ).get();
+
+    if (!snapshot.empty) return res.status(400).json({ message: "Connection already exists or is pending" });
+
+    const newConnectionRef = await db.collection('connections').add({
+      requester: req.user.id,
+      recipient: recipientId,
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    if (existingConnection) return res.status(400).json({ message: "Connection already exists or is pending" });
-
-    const newConnection = new Connection({ requester: req.user.id, recipient: recipientId, status: 'pending' });
-    await newConnection.save();
-
     // Create notification
-    const notification = new Notification({
+    await db.collection('notifications').add({
       recipient: recipientId,
       sender: req.user.id,
       type: 'connection_request',
-      referenceId: newConnection._id,
-      message: `sent you a connection request.`
+      referenceId: newConnectionRef.id,
+      message: `sent you a connection request.`,
+      read: false,
+      resolved: false,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
-    await notification.save();
 
-    res.json({ message: 'Connection request sent', connection: newConnection });
+    const newConnectionDoc = await newConnectionRef.get();
+    res.json({ message: 'Connection request sent', connection: { _id: newConnectionRef.id, ...newConnectionDoc.data() } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -41,35 +47,47 @@ exports.respondToRequest = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body; // 'accepted' or 'rejected'
     
-    const connection = await Connection.findById(id);
-    if (!connection) return res.status(404).json({ message: 'Connection not found' });
+    const connectionRef = db.collection('connections').doc(id);
+    const connectionDoc = await connectionRef.get();
+    
+    if (!connectionDoc.exists) return res.status(404).json({ message: 'Connection not found' });
+    const connectionData = connectionDoc.data();
 
-    if (connection.recipient.toString() !== req.user.id) {
+    if (connectionData.status !== 'pending') {
+      return res.status(400).json({ message: 'Request already responded to' });
+    }
+
+    if (connectionData.recipient !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to respond to this request' });
     }
 
-    connection.status = status;
-    await connection.save();
+    await connectionRef.update({ status });
 
     // If accepted, send notification back to requester
     if (status === 'accepted') {
-      const notification = new Notification({
-        recipient: connection.requester,
+      await db.collection('notifications').add({
+        recipient: connectionData.requester,
         sender: req.user.id,
         type: 'connection_accepted',
-        referenceId: connection._id,
-        message: `accepted your connection request.`
+        referenceId: id,
+        message: `accepted your connection request.`,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      await notification.save();
     }
 
-    // Mark the original request notification as read
-    await Notification.findOneAndUpdate(
-      { recipient: req.user.id, referenceId: id, type: 'connection_request' },
-      { read: true }
-    );
+    // Mark the original request notification as read and resolved
+    const notifSnapshot = await db.collection('notifications')
+      .where('recipient', '==', req.user.id)
+      .where('referenceId', '==', id)
+      .where('type', '==', 'connection_request')
+      .get();
+      
+    if (!notifSnapshot.empty) {
+      await db.collection('notifications').doc(notifSnapshot.docs[0].id).update({ read: true, resolved: true });
+    }
 
-    res.json({ message: `Connection ${status}`, connection });
+    res.json({ message: `Connection ${status}`, connection: { _id: id, ...connectionData, status } });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -77,14 +95,39 @@ exports.respondToRequest = async (req, res) => {
 
 exports.getMyConnections = async (req, res) => {
   try {
-    const connections = await Connection.find({
-      $or: [{ requester: req.user.id }, { recipient: req.user.id }],
-      status: 'accepted'
-    }).populate('requester recipient', 'name characterName email');
+    const snapshot = await db.collection('connections')
+      .where('status', '==', 'accepted')
+      .where(
+        Filter.or(
+          Filter.where('requester', '==', req.user.id),
+          Filter.where('recipient', '==', req.user.id)
+        )
+      ).get();
 
-    const friends = connections.map(conn => {
-      return conn.requester._id.toString() === req.user.id ? conn.recipient : conn.requester;
+    const connectedUserIds = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      connectedUserIds.push(data.requester === req.user.id ? data.recipient : data.requester);
     });
+
+    if (connectedUserIds.length === 0) return res.json([]);
+
+    const friends = [];
+    // Chunk fetch users
+    for (let i = 0; i < connectedUserIds.length; i += 10) {
+      const chunk = connectedUserIds.slice(i, i + 10);
+      const usersSnapshot = await db.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+      usersSnapshot.forEach(userDoc => {
+        const u = userDoc.data();
+        friends.push({
+          _id: userDoc.id,
+          name: u.name,
+          characterName: u.characterName,
+          email: u.email,
+          profileImage: u.profileImage
+        });
+      });
+    }
 
     res.json(friends);
   } catch (error) {
@@ -97,19 +140,18 @@ exports.removeConnection = async (req, res) => {
     const friendId = req.params.id; // user id of the connection
     const myId = req.user.id;
     
-    // Find connection document between the two users
-    const connection = await Connection.findOne({
-      $or: [
-        { requester: myId, recipient: friendId },
-        { requester: friendId, recipient: myId }
-      ]
-    });
+    const snapshot = await db.collection('connections').where(
+      Filter.or(
+        Filter.and(Filter.where('requester', '==', myId), Filter.where('recipient', '==', friendId)),
+        Filter.and(Filter.where('requester', '==', friendId), Filter.where('recipient', '==', myId))
+      )
+    ).get();
 
-    if (!connection) {
+    if (snapshot.empty) {
       return res.status(404).json({ message: 'Connection not found' });
     }
 
-    await Connection.findByIdAndDelete(connection._id);
+    await db.collection('connections').doc(snapshot.docs[0].id).delete();
     
     res.json({ message: 'Connection removed successfully', connectionId: friendId });
   } catch (error) {

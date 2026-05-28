@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import MovieCard from '../components/MovieCard';
-import { Loader2, TrendingUp, Calendar, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, TrendingUp, Calendar, Sparkles, ChevronLeft, ChevronRight, Globe, MessageSquare, Users } from 'lucide-react';
 import { HomeSkeleton } from '../components/Skeleton';
 
 const SectionTitle = ({ title, icon: Icon }) => (
@@ -80,9 +80,10 @@ const MovieRow = ({ title, movies, icon: Icon, type, genreId }) => {
 
 const Home = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [upcoming, setUpcoming] = useState([]);
   const [nowPlaying, setNowPlaying] = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
+  const [publicDiscussions, setPublicDiscussions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -99,8 +100,7 @@ const Home = () => {
 
         const fetchResults = await Promise.allSettled([
           api.get('/movies/upcoming'),
-          api.get('/movies/now-playing'),
-          api.get('/movies/recommendations')
+          api.get('/movies/now-playing')
         ]);
 
         if (fetchResults[0].status === 'fulfilled') {
@@ -128,8 +128,12 @@ const Home = () => {
           setNowPlaying(fetchResults[1].value.data);
         }
 
-        if (fetchResults[2].status === 'fulfilled') {
-          setRecommendations(fetchResults[2].value.data);
+        // Fetch public discussions
+        try {
+          const pubDisc = await api.get('/discussions/public');
+          setPublicDiscussions(pubDisc.data);
+        } catch (e) {
+          console.error('Failed to fetch public discussions', e);
         }
 
       } catch (error) {
@@ -148,16 +152,50 @@ const Home = () => {
       <div className="container mx-auto">
         <MovieRow title="Upcoming Films" movies={upcoming} icon={Calendar} type="upcoming" />
         <MovieRow title="Now in Theatres" movies={nowPlaying} icon={TrendingUp} type="now_playing" />
-        
-        {recommendations.map((section, idx) => (
-          <MovieRow 
-            key={idx} 
-            title={section.title} 
-            movies={section.movies} 
-            icon={Sparkles} 
-            type="recommendation"
-          />
-        ))}
+
+        {/* Public Discussions Section */}
+        {publicDiscussions.length > 0 && (
+          <section className="mb-16 px-4">
+            <div className="flex items-center gap-3 mb-6">
+              <Globe className="w-6 h-6 text-gold-text shadow-[0_0_10px_rgba(255,215,0,0.3)]" />
+              <h2 className="text-2xl font-black tracking-tighter gold-text uppercase">Public Discussion Rooms</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {publicDiscussions.map(disc => (
+                <div
+                  key={disc._id}
+                  onClick={() => navigate(`/discussions/${disc._id}`)}
+                  className="relative rounded-2xl overflow-hidden border border-white/10 hover:border-gold-text/40 transition-all duration-300 cursor-pointer group shadow-lg hover:shadow-[0_0_30px_rgba(255,215,0,0.08)]"
+                >
+                  {/* Backdrop */}
+                  <div className="aspect-video w-full relative">
+                    <img
+                      src={disc.image || `https://image.tmdb.org/t/p/w780${disc.movie?.posterPath}`}
+                      alt={disc.movie?.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-50"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                    {/* Public badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
+                      <Globe className="w-3 h-3 text-green-400" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-green-400">Public</span>
+                    </div>
+                    {/* Participants */}
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 bg-black/50 border border-white/10 rounded-full">
+                      <Users className="w-3 h-3 text-gray-400" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{(disc.participants || []).length}</span>
+                    </div>
+                    {/* Content overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gold-text/80 mb-1">{disc.movie?.title}</p>
+                      <p className="text-sm font-bold text-white line-clamp-2 leading-snug">{disc.caption}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

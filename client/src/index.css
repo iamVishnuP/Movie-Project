@@ -262,3 +262,75 @@ body {
   border-color: #ffd700;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
 }
+
+/* ─── Mobile Responsive Utilities ─── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Safe area padding for iOS notch */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Touch-friendly tap targets on mobile */
+@media (max-width: 640px) {
+  .nav-link {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+  }
+
+  /* Better scrolling on mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent horizontal overflow */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* ─── Responsive Discussion Thread ─── */
+@media (max-width: 768px) {
+  .discussion-header-image {
+    height: 180px;
+  }
+}
+
+/* ─── Global Viewport & PWA Tuning ─── */
+
+/* Touch screen visual click optimizations */
+a, button, select, input, textarea, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area padding notches */
+.safe-padding-bottom {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+}
+
+/* Viewport scaling adjustments */
+@media (max-width: 640px) {
+  /* Mobile Phone specific adjustments */
+  .glass-card {
+    border-radius: 8px;
+  }
+  input, button {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Tablet specific adjustments */
+  .glass-card {
+    border-radius: 12px;
+  }
+}
+
+@media (min-width: 1025px) {
+  /* Laptop & Desktop specific adjustments */
+  .glass-card {
+    border-radius: 16px;
+  }
+}

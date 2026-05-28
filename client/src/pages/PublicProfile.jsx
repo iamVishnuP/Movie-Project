@@ -11,7 +11,8 @@ import {
   Check,
   MessageSquare,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -86,7 +87,7 @@ const PublicProfile = () => {
 
   const { user, connectionStatus, stats } = profile;
 
-  const Section = ({ title, icon: Icon, items }) => (
+  const Section = ({ title, icon: Icon, items, type }) => (
     <div className="glass-card mb-8">
       <div className="flex items-center gap-4 p-6 border-b border-white/5 bg-white/5">
         <div className="w-10 h-10 rounded-full bg-gold-text/10 flex items-center justify-center">
@@ -94,29 +95,47 @@ const PublicProfile = () => {
         </div>
         <h3 className="text-lg font-black uppercase tracking-tight text-white">{title}</h3>
       </div>
-      <div className="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
-        {items?.map((item, idx) => {
-          let name = item.name || item.title || item;
-          let image = item.profilePath || item.posterPath ? `https://image.tmdb.org/t/p/w185${item.profilePath || item.posterPath}` : null;
-
-          return (
-            <div key={idx} className="relative bg-white/5 border border-white/10 rounded-xl overflow-hidden aspect-[4/5] hover:border-gold-text/50 transition-all duration-300 group">
-              {image ? (
-                <img src={image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt={name} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center p-4 text-center">
-                  <span className="text-sm font-black gold-text uppercase leading-tight">{name}</span>
-                </div>
-              )}
+      {type === 'badge' ? (
+        <div className="p-4 md:p-6 flex flex-wrap gap-2">
+          {items?.map((item, idx) => {
+            let name = item.name || item.title || item;
+            return (
+              <div key={idx} className="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 border bg-white/5 border-white/10 text-white">
+                {name}
+              </div>
+            );
+          })}
+          {(!items || items.length === 0) && (
+            <div className="w-full py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10 opacity-30">
+              <p className="text-gray-500 text-xs italic uppercase tracking-widest">Nothing shared</p>
             </div>
-          );
-        })}
-        {(!items || items.length === 0) && (
-          <div className="col-span-full py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10 opacity-30">
-            <p className="text-gray-500 text-xs italic uppercase tracking-widest">Nothing shared</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-4 md:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+          {items?.map((item, idx) => {
+            let name = item.name || item.title || item;
+            let image = item.profilePath || item.posterPath ? `https://image.tmdb.org/t/p/w185${item.profilePath || item.posterPath}` : null;
+
+            return (
+              <div key={idx} className="relative bg-white/5 border border-white/10 rounded-xl overflow-hidden aspect-[4/5] hover:border-gold-text/50 transition-all duration-300 group">
+                {image ? (
+                  <img src={image} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" alt={name} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-4 text-center">
+                    <span className="text-sm font-black gold-text uppercase leading-tight">{name}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {(!items || items.length === 0) && (
+            <div className="col-span-full py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10 opacity-30">
+              <p className="text-gray-500 text-xs italic uppercase tracking-widest">Nothing shared</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -178,8 +197,8 @@ const PublicProfile = () => {
 
           {/* Preferences */}
           <div className="w-full md:w-2/3">
-            <Section title="Favorite Genres" icon={Clapperboard} items={user.selectedGenres?.map(id => GENRE_MAP[id] || id)} />
-            <Section title="Preferred Languages" icon={Languages} items={user.selectedLanguages?.map(code => LANG_MAP[code] || code)} />
+            <Section title="Favorite Genres" icon={Clapperboard} items={user.selectedGenres?.map(id => GENRE_MAP[id] || id)} type="badge" />
+            <Section title="Preferred Languages" icon={Languages} items={user.selectedLanguages?.map(code => LANG_MAP[code] || code)} type="badge" />
             <Section title="Favorite Directors" icon={UserIcon} items={user.favoriteDirectors} />
             <Section title="Favorite Movies" icon={Film} items={user.favoriteMovies} />
           </div>

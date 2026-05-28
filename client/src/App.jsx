@@ -23,6 +23,9 @@ import CreateDiscussion from './pages/CreateDiscussion';
 import DiscussionThread from './pages/DiscussionThread';
 import ViewAll from './pages/ViewAll';
 import Landing from './pages/Landing';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import Rooms from './pages/Rooms';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -67,6 +70,8 @@ function App() {
             <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
             <Route path="/verify-otp" element={<PublicRoute><OTPVerification /></PublicRoute>} />
             <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+            <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
             
             <Route path="/" element={<Landing />} />
             
@@ -86,6 +91,7 @@ function App() {
             <Route path="/create-discussion" element={<ProtectedRoute><MainLayout><CreateDiscussion /></MainLayout></ProtectedRoute>} />
             <Route path="/discussion/:id" element={<ProtectedRoute><MainLayout><DiscussionThread /></MainLayout></ProtectedRoute>} />
             <Route path="/view-all" element={<ProtectedRoute><MainLayout><ViewAll /></MainLayout></ProtectedRoute>} />
+            <Route path="/rooms" element={<ProtectedRoute><MainLayout><Rooms /></MainLayout></ProtectedRoute>} />
           </Routes>
           <Toaster position="top-center" toastOptions={{
             style: {

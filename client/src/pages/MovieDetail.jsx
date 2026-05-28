@@ -254,6 +254,24 @@ const MovieDetail = () => {
     }
   };
 
+  const handleDeleteReview = async (movieId) => {
+    if (!window.confirm('Delete this review text? (Rating will be kept)')) return;
+    try {
+      const response = await api.delete(`/movies/reviews/${movieId}`);
+      setUser(prev => ({ ...prev, watchlist: response.data.watchlist }));
+      setReviewText('');
+      toast.success('Review deleted');
+      
+      // Refresh global reviews
+      const reviewsRes = await api.get(`/movies/detail/${id}/reviews`);
+      setReviews(reviewsRes.data);
+    } catch (error) {
+      console.error('Delete review error:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete review');
+    }
+  };
+
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-black">
       <Loader2 className="w-12 h-12 text-gold-text animate-spin" />
@@ -516,9 +534,20 @@ const MovieDetail = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 bg-gold-text/10 px-3 py-1.5 rounded-lg border border-gold-text/20">
-                        <Star className="w-4 h-4 text-gold-text fill-gold-text" />
-                        <span className="font-black text-gold-text">{rev.rating}</span>
+                      <div className="flex items-center gap-2">
+                        {rev.userId === user?.id && (
+                          <button 
+                            onClick={() => handleDeleteReview(id)}
+                            className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                            title="Delete review text"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        <div className="flex items-center gap-1 bg-gold-text/10 px-3 py-1.5 rounded-lg border border-gold-text/20">
+                          <Star className="w-4 h-4 text-gold-text fill-gold-text" />
+                          <span className="font-black text-gold-text">{rev.rating}</span>
+                        </div>
                       </div>
                     </div>
                     {rev.review && <p className="text-gray-300 leading-relaxed italic mt-4">"{rev.review}"</p>}
