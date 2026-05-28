@@ -16,7 +16,11 @@ const discussionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     seenAt: { type: Date, default: Date.now }
   }],
-  status: { type: String, enum: ['draft', 'active'], default: 'draft' }
+  status: { type: String, enum: ['draft', 'active'], default: 'draft' },
+  visibility: { type: String, enum: ['public', 'private'], default: 'private' },
+  lastActivityAt: { type: Date, default: Date.now },
+  postCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Discussion', discussionSchema);
+

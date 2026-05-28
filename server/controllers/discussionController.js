@@ -6,36 +6,41 @@ const { uploadImage } = require('../utils/cloudinary');
 
 exports.createDiscussion = async (req, res) => {
   try {
-    const { movie, caption, thoughts, image, invitedIds } = req.body;
+    const { movie, caption, thoughts, image, invitedIds, visibility } = req.body;
     
     let finalImage = image;
     if (image && image.startsWith('data:image')) {
       finalImage = await uploadImage(image, 'discussions');
     }
 
+    const isPublic = visibility === 'public';
     const newDiscussion = new Discussion({
       creator: req.user.id,
       movie,
       caption,
       thoughts,
       image: finalImage,
-      invited: invitedIds,
+      invited: invitedIds || [],
       participants: [req.user.id],
-      status: 'draft' // status becomes 'active' after first invitee accepts
+      visibility: visibility || 'private',
+      status: isPublic ? 'active' : 'draft',
+      lastActivityAt: new Date()
     });
     
     await newDiscussion.save();
 
     // Invite users
-    for (const userId of invitedIds) {
-      const notification = new Notification({
-        recipient: userId,
-        sender: req.user.id,
-        type: 'discussion_invite',
-        referenceId: newDiscussion._id,
-        message: `invited you to discuss ${movie.title}.`
-      });
-      await notification.save();
+    if (invitedIds && invitedIds.length > 0) {
+      for (const userId of invitedIds) {
+        const notification = new Notification({
+          recipient: userId,
+          sender: req.user.id,
+          type: 'discussion_invite',
+          referenceId: newDiscussion._id,
+          message: `invited you to discuss ${movie.title}.`
+        });
+        await notification.save();
+      }
     }
 
     res.json(newDiscussion);
@@ -131,6 +136,8 @@ exports.createPost = async (req, res) => {
     
     // Touch discussion to update its updatedAt timestamp for unread tracking
     discussion.updatedAt = new Date();
+    discussion.lastActivityAt = new Date();
+    discussion.postCount = (discussion.postCount || 0) + 1;
     await discussion.save();
     
     // Process mentions
@@ -257,6 +264,83 @@ exports.seenDiscussion = async (req, res) => {
     
     await discussion.save();
     res.json({ message: 'Seen updated' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Hacker-News-style trending score with time decay
+function computeTrendingScore(discussion) {
+  const now = Date.now();
+  const createdAt = discussion.createdAt ? new Date(discussion.createdAt).getTime() : now;
+  const lastActivity = discussion.lastActivityAt ? new Date(discussion.lastActivityAt).getTime() : createdAt;
+  const hoursOld = Math.max((now - createdAt) / (1000 * 60 * 60), 0.5);
+  const hoursSinceActivity = Math.max((now - lastActivity) / (1000 * 60 * 60), 0.1);
+  const postCount = discussion.postCount || 0;
+  const participantCount = (discussion.participants || []).length;
+  // Recency bonus: more recent activity = higher score
+  const activityScore = (postCount * 3 + participantCount * 2) / Math.pow(hoursOld + 2, 1.5);
+  const recencyBonus = 100 / Math.pow(hoursSinceActivity + 1, 0.8);
+  return activityScore + recencyBonus;
+}
+
+exports.getPublicDiscussions = async (req, res) => {
+  try {
+    const discussions = await Discussion.find({
+      visibility: 'public',
+      status: 'active'
+    })
+    .populate('creator', 'name characterName email profileImage')
+    .sort({ createdAt: -1 })
+    .limit(20);
+    
+    res.json(discussions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getTrendingRooms = async (req, res) => {
+  try {
+    const discussions = await Discussion.find({
+      visibility: 'public',
+      status: 'active'
+    }).populate('creator', 'name characterName email profileImage');
+    
+    const scored = discussions.map(disc => {
+      const score = computeTrendingScore(disc);
+      return { ...disc.toObject(), trendingScore: score };
+    });
+    
+    scored.sort((a, b) => b.trendingScore - a.trendingScore);
+    res.json(scored.slice(0, 20));
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.searchRoomsByMovie = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || !q.trim()) return res.json([]);
+    
+    const query = q.trim().toLowerCase();
+    
+    const discussions = await Discussion.find({
+      visibility: 'public',
+      status: 'active'
+    }).populate('creator', 'name characterName email profileImage');
+    
+    const filtered = discussions.filter(disc => {
+      const title = (disc.movie?.title || '').toLowerCase();
+      return title.includes(query);
+    }).map(disc => {
+      const score = computeTrendingScore(disc);
+      return { ...disc.toObject(), trendingScore: score };
+    });
+    
+    filtered.sort((a, b) => b.trendingScore - a.trendingScore);
+    res.json(filtered);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
