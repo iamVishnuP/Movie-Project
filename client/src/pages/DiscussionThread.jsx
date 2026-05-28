@@ -41,8 +41,10 @@ const DiscussionThread = () => {
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isLeavingRef = useRef(false);
 
   const fetchData = async () => {
+    if (isLeavingRef.current) return;
     try {
       const response = await api.get(`/discussions/${id}`);
       setData(response.data);
@@ -54,10 +56,14 @@ const DiscussionThread = () => {
       // Inform server
       api.post(`/discussions/${id}/seen`).catch(() => {});
     } catch (error) {
-      toast.error('Failed to load discussion');
-      navigate('/');
+      if (!isLeavingRef.current) {
+        toast.error('Failed to load discussion');
+        navigate('/');
+      }
     } finally {
-      setLoading(false);
+      if (!isLeavingRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -159,11 +165,13 @@ const DiscussionThread = () => {
   const handleLeave = async () => {
     if (!window.confirm('Are you sure you want to leave this discussion?')) return;
 
+    isLeavingRef.current = true;
     try {
       await api.post(`/discussions/leave/${id}`);
       toast.success('Left discussion');
       navigate('/');
     } catch (error) {
+      isLeavingRef.current = false;
       toast.error('Failed to leave discussion');
     }
   };
@@ -171,11 +179,13 @@ const DiscussionThread = () => {
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to permanently delete this discussion room? This action cannot be undone.')) return;
 
+    isLeavingRef.current = true;
     try {
       await api.delete(`/discussions/${id}`);
       toast.success('Discussion room deleted successfully');
       navigate('/rooms');
     } catch (error) {
+      isLeavingRef.current = false;
       toast.error(error.response?.data?.message || 'Failed to delete discussion room');
     }
   };

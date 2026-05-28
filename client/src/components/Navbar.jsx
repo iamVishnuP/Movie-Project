@@ -167,8 +167,6 @@ const Navbar = () => {
         <div 
           ref={roomsMenuRef}
           className="relative"
-          onMouseEnter={() => setShowRoomsMenu(true)}
-          onMouseLeave={() => setShowRoomsMenu(false)}
         >
           <button
             onClick={() => setShowRoomsMenu(!showRoomsMenu)}
