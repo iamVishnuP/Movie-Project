@@ -115,7 +115,9 @@ const Navbar = () => {
         setShowProfileMenu(false);
       }
       if (roomsMenuRef.current && !roomsMenuRef.current.contains(event.target)) {
-        setShowRoomsMenu(false);
+        if (!mobileMenuRef.current || !mobileMenuRef.current.contains(event.target)) {
+          setShowRoomsMenu(false);
+        }
       }
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
         setIsMobileMenuOpen(false);
