@@ -115,8 +115,17 @@ exports.createPost = async (req, res) => {
     const discussion = await Discussion.findById(discussionId);
     if (!discussion) return res.status(404).json({ message: 'Discussion not found' });
 
-    if (!discussion.participants.some(p => p.toString() === req.user.id)) {
+    const isParticipant = discussion.participants.some(p => p.toString() === req.user.id) || 
+                          discussion.creator.toString() === req.user.id;
+    const isPublic = discussion.visibility === 'public';
+
+    if (!isParticipant && !isPublic) {
       return res.status(403).json({ message: 'Only participants can post in this discussion' });
+    }
+
+    // Automatically enroll user as participant if they post in a public room
+    if (!discussion.participants.some(p => p.toString() === req.user.id)) {
+      discussion.participants.push(req.user.id);
     }
 
     let finalImageUrl = imageUrl;

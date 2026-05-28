@@ -442,7 +442,7 @@ exports.removeRating = async (req, res) => {
     const movie = user.watchlist.find(m => m.movieId === movieId);
     if (movie) {
       movie.rating = 0;
-      delete movie.review;
+      movie.review = undefined;
       user.markModified('watchlist');
       await user.save();
     }
