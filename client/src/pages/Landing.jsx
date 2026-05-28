@@ -512,7 +512,7 @@ const Landing = () => {
               Discover films, rate what you've watched, build your cinephile circle, and dive into discussions that go deeper than any script.
             </p>
             <div className="flex flex-wrap gap-4">
-              <button onClick={() => navigate('/discover')}
+              <button onClick={() => navigate('/Signin')}
                 className="glass flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-bold uppercase tracking-widest text-sm hover:bg-yellow-500/20 hover:text-yellow-400 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all duration-300 active:scale-95 group"
                 style={{ fontFamily: "'DM Sans', sans-serif" }}>
                 Enter Discovery
