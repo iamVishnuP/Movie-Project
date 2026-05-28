@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Film, User, LogOut, Bookmark, Search, Star, Trash2, Plus, Users, Menu, X, Globe, ChevronDown } from 'lucide-react';
 import NotificationBell from './NotificationBell';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRoomsMenu, setShowRoomsMenu] = useState(false);
@@ -126,6 +127,13 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close all mobile overlay menus automatically when the URL path changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setShowRoomsMenu(false);
+    setShowProfileMenu(false);
+  }, [location.pathname]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -396,14 +404,12 @@ const Navbar = () => {
           <div className="flex flex-col p-6 gap-4">
             <NavLink
               to="/discover"
-              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => `flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${isActive ? 'bg-gold-text text-black' : 'text-white hover:bg-white/10'}`}
             >
               Discover
             </NavLink>
             <NavLink
               to="/watchlist"
-              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => `flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${isActive ? 'bg-gold-text text-black' : 'text-white hover:bg-white/10'}`}
             >
               <Bookmark className="w-6 h-6" />
@@ -411,7 +417,6 @@ const Navbar = () => {
             </NavLink>
             <NavLink
               to="/find-people"
-              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => `flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${isActive ? 'bg-gold-text text-black' : 'text-white hover:bg-white/10'}`}
             >
               <Users className="w-6 h-6" />
@@ -435,14 +440,12 @@ const Navbar = () => {
                   <div className="flex gap-2 mb-2 pr-4">
                     <NavLink
                       to="/rooms"
-                      onClick={() => setIsMobileMenuOpen(false)}
                       className="flex-1 text-center py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-gray-400 hover:text-white"
                     >
                       All Rooms
                     </NavLink>
                     <NavLink
                       to="/create-discussion"
-                      onClick={() => setIsMobileMenuOpen(false)}
                       className="flex-1 text-center py-2 bg-gold-text/10 border border-gold-text/20 rounded-xl text-xs font-bold text-gold-text"
                     >
                       Create Room
@@ -474,7 +477,6 @@ const Navbar = () => {
                           <div
                             key={disc._id}
                             onClick={() => {
-                              setIsMobileMenuOpen(false);
                               navigate(`/discussion/${disc._id}`);
                             }}
                             className="flex items-center gap-3 py-2 cursor-pointer"
