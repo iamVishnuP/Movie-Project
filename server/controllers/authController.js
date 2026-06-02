@@ -151,9 +151,27 @@ exports.resendOTP = async (req, res) => {
 
 exports.deleteAccount = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.user.id);
+    const userId = req.user.id;
+    const user = await User.findByIdAndDelete(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ message: 'Account deleted successfully' });
+
+    // Import models for cascading deletes
+    const Review = require('../models/Review');
+    const Discussion = require('../models/Discussion');
+    const DiscussionPost = require('../models/DiscussionPost');
+    
+    // Delete all reviews, discussion rooms, and posts created by the user
+    await Promise.all([
+      Review.deleteMany({ userId: userId }),
+      Discussion.deleteMany({ creator: userId }),
+      DiscussionPost.deleteMany({ author: userId })
+    ]);
+
+    // Remove user references from arrays in other documents
+    await Discussion.updateMany({}, { $pull: { participants: userId, invited: userId } });
+    await Review.updateMany({}, { $pull: { likes: userId, dislikes: userId } });
+
+    res.json({ message: 'Account and associated activity deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
