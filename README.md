@@ -5,12 +5,11 @@ A full-stack web application built with the MERN stack (MongoDB, Express, React,
 ## 🚀 Features
 
 - **User Authentication**: Secure user login and registration using JSON Web Tokens (JWT) and bcryptjs.
-- **Media Uploads**: Seamless image and media handling with Cloudinary and Multer.
+- **Media Storage**: Seamless image handling with Cloudinary for profile pictures and media.
 - **Responsive UI**: A modern, responsive user interface built with React, TailwindCSS, and animated with Framer Motion.
 - **State & Routing**: Efficient client-side routing with React Router DOM.
 - **API Integration**: Fast and reliable API requests using Axios.
-- **Email Notifications**: Integrated email services using Nodemailer and Brevo.
-- **Performance**: Server-side caching implemented with Node-cache.
+- **Performance**: Server-side caching implemented with Node-cache to optimize data retrieval.
 
 ## 🛠️ Tech Stack
 
@@ -30,8 +29,6 @@ A full-stack web application built with the MERN stack (MongoDB, Express, React,
 - **Database**: MongoDB & Mongoose
 - **Authentication**: JSON Web Token (JWT)
 - **Media Storage**: Cloudinary
-- **File Uploads**: Multer
-- **Email Service**: Nodemailer / Brevo API
 - **Caching**: Node-cache
 
 ## 🏁 Getting Started
@@ -44,7 +41,6 @@ Ensure you have the following installed:
 - [Node.js](https://nodejs.org/) (v18 or higher recommended)
 - [MongoDB](https://www.mongodb.com/) (Local or Atlas database URI)
 - Cloudinary account for media storage
-- Brevo/Nodemailer credentials for email services
 
 ### Installation
 
@@ -86,12 +82,6 @@ Ensure you have the following installed:
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
    CLOUDINARY_API_SECRET=your_api_secret
-
-   # Email Configuration (Brevo/Nodemailer)
-   SMTP_HOST=your_smtp_host
-   SMTP_PORT=your_smtp_port
-   SMTP_USER=your_smtp_user
-   SMTP_PASS=your_smtp_password
    ```
 
 ### Running the Application
